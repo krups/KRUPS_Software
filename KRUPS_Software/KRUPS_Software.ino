@@ -19,6 +19,7 @@ void setup() {
     isbd.begin();
     isbd.adjustSendReceiveTimeout(45);
     isbd.useMSSTMWorkaround(false);
+    isbd.setPowerProfile(0);
 }
 
 void loop() {
