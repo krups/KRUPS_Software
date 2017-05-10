@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <KRUPS_TC.h>
 #include <KRUPS_Sensor.h>
-#include<compress.h>
+#include <compress.h>
 #include <IridiumSBD.h>
 #include <QueueList.h>
-
+#include <SerialFlash.h>
 
 
 #define BUFF_SIZE   (430) //size of the measurement buffer
