@@ -63,12 +63,6 @@ void decompress(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, size_
     }
 }
 
-// append a half float to the end of the buffer parameter
-void append(uint8_t *buf, size_t &loc, float input){
-	ftoh temp; temp.f = input;
-	buf[loc++] = temp.b[2]; 
-	buf[loc++] = temp.b[3];
-}
 
 void append(uint8_t *buf, size_t &loc, int16_t input) {
 	buf[loc++] = input;
