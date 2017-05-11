@@ -14,8 +14,8 @@
 #define FLASH_PIN (0) //select pin for the flash chip
 
 volatile bool launched = false, ejected = true, splash_down = false;
-uint8_t measure_buf[BUFF_SIZE]; // don't forget to change to a larger size
-size_t loc = 0;
+uint8_t measure_buf[BUFF_SIZE]; // holds readings to be stored in packets
+size_t loc = 0; //location in the buffer
 IridiumSBD isbd(Serial1);
 int16_t num_packets = 0; //counter for number of packets to establish chronlogical order
 QueueList<uint8_t*> message_queue; //queue of messages left to send, messages pushed into front, pulled out back
@@ -53,7 +53,68 @@ void Read_TC(uint8_t *buf, size_t &loc)
 }
 */
 
+void pack_header(uint8_t* packet, size_t loc)
+{
+  append(packet, loc, num_packets); // add counter to the front of the packet
+}
+
+void pack_packet(uint8_t* packet, size_t p_loc, uint8_t* data)
+{
+
+  pack_header(packet, p_loc);
+  
+  //copy readings
+  for(int i = 0; i < PACKET_SIZE-HEADER_SIZE; i++)
+  {
+      packet[p_loc] = data[i];
+      p_loc++;
+  }
+}
+
+//Writes the packet to the onboard flash chip
+//prefers 256 byte chunks as the library says this amount is the most efficent
+void save_packet(uint8_t* packet)
+{
+  String filename = "Packet_" + num_packets;
+  SerialFlash.create(filename.c_str(), PACKET_SIZE);
+  SerialFlashFile file = SerialFlash.open((filename + ".bin").c_str());
+  for(int i = 0; i < PACKET_SIZE; i += 256)
+  {
+    if(PACKET_SIZE - i < 256) //if we don't have enough space for a full chunk to be written
+    {
+      file.write(&packet[i], PACKET_SIZE - i); //write to the end of the packet
+    }
+    else
+    {
+      file.write(&packet[i], 256); // else write a 256 chunk
+    }
+  }
+}
+
+void do_tasks()
+{
+        Read_gyro(measure_buf, loc);        // 6 bytes
+        Read_loaccel(measure_buf, loc);     // 6 bytes
+        Read_mag(measure_buf, loc);         // 6 bytes
+        Read_TC(measure_buf, loc);          // 16 bytes
+        //Read_hiaccel(measure_buf, loc);     // 6 bytes
+                
+        //NOTE: make sure packet_size-header_size is a mutliple of the number of bytes in a read cycle
+        //to make sure no splicing occurs
+        if(loc >= PACKET_SIZE - HEADER_SIZE)  //if we have enough bytes to fill the packet (leaving space for the header)
+        {
+            //new packet
+            uint8_t packet[PACKET_SIZE]; 
+            size_t p_loc = 0;
+            pack_packet(packet, p_loc, measure_buf);
+            message_queue.push(packet); //add to queue
+            num_packets++; //we now have one more packet
+            loc = 0;  //reset where the sensors are writing to in the buffer
+        }
+}
+
 void setup() {
+    //sensors
     init_Sensors(); init_TC();
     init_accel_interrupt(1.75, .1, 0x00);       // set for launch detection
     init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
@@ -68,65 +129,23 @@ void setup() {
     SerialFlash.begin(FLASH_PIN);
 }
 
-
-void do_tasks()
-{
-        Read_gyro(measure_buf, loc);        // 6 bytes
-        Read_loaccel(measure_buf, loc);     // 6 bytes
-        Read_mag(measure_buf, loc);         // 6 bytes
-        Read_TC(measure_buf, loc);          // 16 bytes
-        //Read_hiaccel(measure_buf, loc);     // 6 bytes
-        // TODO: store the measurements in the EEPROM/FLASH
-                
-        //NOTE: make sure packet_size-header_size is a mutliple of the number of bytes in a read cycle
-        //to make sure no splicing occurs
-        if(loc >= PACKET_SIZE - HEADER_SIZE)  //if we have enough bytes to fill the packet (leaving space for the header)
-        {
-            //new packet
-            uint8_t packet[PACKET_SIZE]; 
-            size_t p_loc = 0;
-
-            //header
-            append(packet, p_loc, num_packets); // add counter to the front of the packet
-            //end header
-
-            //copy readings
-            for(int i = 0; i < PACKET_SIZE-HEADER_SIZE; i++)
-            {
-                packet[p_loc] = measure_buf[i];
-                p_loc++;
-            }
-            
-            //add to queue
-            message_queue.push(packet);
-
-            //write packet the flash chip
-            String filename = "Packet_" + num_packets;
-            SerialFlash.create(filename, PACKET_SIZE);
-            SerialFlashFile file = SerialFlash.open(filename + ".bin");
-            for(int i = 0; i < PACKET_SIZE; i = i + 256)
-            {
-              if(PACKET_SIZE - i < 256) //if we don't have enough space for a full chunk to be written
-              {
-                file.write(&packet[i], PACKET_SIZE - i); //write to the end of the packet
-              }
-              else
-              {
-                file.write(&packet[i], 256); // else write a 256 chunk
-              }
-            }
-            
-            num_packets++; //we now have one more packet
-            loc = 0;  //reset where the sensors are writing to in the buffer
-        }
-}
-
 void loop() {
     // TODO: make splash-down detection routine
     if (splash_down) {
         // potentially start GPS ping and LED beacon
+        
+        //empty the queue
+        while(!message_queue.isEmpty())
+        {
+            uint8_t* packet;
+            packet = message_queue.peek();
+            uint16_t loc = PACKET_SIZE;
+            isbd.sendSBDBinary(packet, loc);
+            message_queue.pop();
+        }
+        
     }
-    else if (ejected) {
+    else {
         do_tasks(); //complete needed tasks for measurment
 
         //transmit data packets from the queue
@@ -134,19 +153,11 @@ void loop() {
         {
             uint8_t* packet;
             packet = message_queue.peek();
-            uint16_t loc;
+            uint16_t loc  = PACKET_SIZE;
             isbd.sendSBDBinary(packet, loc);
             message_queue.pop();
         }
     }
-    else if (launched) {
-        // wait for ejection
-    }
-}
-
-void launch(void) {
-    launched = true;
-    read8(L3GD20_ADDRESS, GYRO_REGISTER_INT1_SRC);
 }
 
 ///run if packet is not sent on a try
