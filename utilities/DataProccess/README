@@ -1,0 +1,54 @@
+Author: Collin Dietz
+Email: c4dietz@gmail.com
+Date: 5/17/17
+
+This program reads in the data in binary files that contain packet data returned by krups craft. The program generates a .csv containing all the data in decimal form, with a header for each instrument.
+
+The program can be complied by calling make in the project directory.
+The compiled program is put in the bin directory and is named KrupsDataProccessor
+
+The program takes 3 command line arguments
+1. The name of a text file containing an absolute file path to the dir where the binaries are on the first line, and
+then the names of the files to be used to make the csv (must all be in that directory, or referenced relative to it)
+2. The name of a .desc file that tells the program basic info about the structure of the packets
+3. The name of the file you want generated (ie name.csv)
+
+The only lines read from the .desc are the first three. They should be formatted exactly like this
+
+SIZE={number of bytes in the packet}
+HEADER_SIZE={number of bytes in the header}
+PACKET_ORDER={comma separated list of instruments in order}
+
+Where info about the packet is input between the {}
+
+The header can have any amount of info and not effect the program, 
+however the first 2 bytes should be a 16 bit counter to allow the program to establish chronological order
+
+The list of files can be made quickly by navigating to the directory where the files are and executing the following
+commands
+
+pwd >> ../{name}.txt
+ls -1 >> ../{name}.txt
+
+This will generate the file one directory up. Replace {name} with your chosen name
+
+The packet order can have any of the following numbers, which map to the
+listed instrument
+
+//KEY
+//TC = 0
+//LOACCEL = 1
+//HIACCEL = 2
+//MAG = 3
+//GYRO = 4
+
+An example of a .desc follows:
+
+SIZE=1934
+HEADER_SIZE=2
+PACKET_ORDER=4,1,3,0,0,0,0,0,0,0,0,0,0,0,0
+
+An example set of data (.txt, .desc, binary files, and the subsequent .csv) are in the example directory
+
+Future features:
+A config file for instruments including header, sensitivity constant and reading function to allow for easy expansion of recognized instruments without modifying the code

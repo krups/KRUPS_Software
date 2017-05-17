@@ -1,3 +1,7 @@
+Author: Collin Dietz
+Email: c4dietz@gmail.com
+Date: 5/17/17
+
 This command line utility takes a file of space separated 8 bit numbers (written as numbers 0 -255)
 
 and out puts the data into binary files.
