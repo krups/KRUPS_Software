@@ -59,7 +59,7 @@ void printPacket(Packet packet, int32_t len)
   for(int i = 0; i < len; i++)
   {
     Serial.print(packet[i]);
-    Serial.print(",");
+    Serial.print(" ");
   }
   Serial.println();
   Serial.println();
