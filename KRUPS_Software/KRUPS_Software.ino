@@ -3,9 +3,9 @@
 #include <IridiumSBD.h>
 #include <QueueList.h>
 #include <SerialFlash.h>
-#include <SimpleTimer.h>
+#include "Packet.h"
 
-#define TEST (false) //decides to use real of fake functions to allow testing
+#define TEST (true) //decides to use real of fake functions to allow testing
 #if TEST
 #include "debug.h"
 #else
@@ -14,9 +14,7 @@
 #endif
 
 
-#define BUFF_SIZE   (430) //size of the measurement buffer
-#define PACKET_SIZE (44) //size of a packets to send
-#define HEADER_SIZE (2)  //number of bytes taken up in the packet by buffer
+#define BUFF_SIZE   (1960) //size of the measurement buffer
 #define FLASH_PIN (0) //select pin for the flash chip
 #define TIME_TO_SPLASH_DOWN (350000) //Time until splash down routine begins in ms
 
@@ -24,38 +22,15 @@ volatile bool launched = false, ejected = true, splash_down = false;
 uint8_t measure_buf[BUFF_SIZE]; // holds readings to be stored in packets
 size_t loc = 0; //location in the buffer
 IridiumSBD isbd(Serial1);
-volatile int16_t num_packets = 0; //counter for number of packets to establish chronlogical order
-QueueList<uint8_t*> message_queue; //queue of messages left to send, messages pushed into front, pulled out back
-SimpleTimer timer = SimpleTimer(); //controls event interrupts
+int16_t num_packets = 0; //counter for number of packets to establish chronlogical order
+int16_t measure_reads = 0;
+QueueList<Packet> message_queue; //queue of messages left to send, messages pushed into front, pulled out back
 
+//messages for non essential tasks
 const uint8_t final_message[17] = {'C','O','M','E',' ','S','A','V','E',' ','M','E',' ','E','V','A','N'};
 const int final_message_length = 17;
 
-/*
- * Adds the relevant header to the front on the packet
- */
-void pack_header(uint8_t* packet, size_t loc)
-{
-  append(packet, loc, num_packets); // add counter to the front of the packet
-}
-
-/*
- * Makes the packet for transmission by adding a header and
- * copying all the data from the given buffer into the packet 
- */
-void pack_packet(uint8_t* packet, size_t p_loc, uint8_t* buff)
-{
-
-  pack_header(packet, p_loc);
-  
-  //copy readings
-  for(int i = 0; i < PACKET_SIZE-HEADER_SIZE; i++)
-  {
-      packet[p_loc] = buff[i];
-      p_loc++;
-  }
-}
-
+//REWRITE
 //Writes the packet to the onboard flash chip
 //prefers 256 byte chunks as the library says this amount is the most efficent
 void save_packet(uint8_t* packet)
@@ -86,19 +61,25 @@ void do_tasks()
         Read_mag(measure_buf, loc);         // 6 bytes
         Read_TC(measure_buf, loc);          // 16 bytes
         //Read_hiaccel(measure_buf, loc);     // 6 bytes
+        measure_reads++;
+
+
+        if(millis() > TIME_TO_SPLASH_DOWN)
+        {
+          splashDown();
+        }
                 
         //NOTE: make sure packet_size-header_size is a mutliple of the number of bytes in a read cycle
         //to make sure no splicing occurs
         if(loc >= PACKET_SIZE - HEADER_SIZE)  //if we have enough bytes to fill the packet (leaving space for the header)
         {
             //new packet
-            uint8_t packet[PACKET_SIZE]; 
-            size_t p_loc = 0;
-            pack_packet(packet, p_loc, measure_buf);
+            Packet packet = Packet(num_packets, measure_buf, PACKET_SIZE); 
             message_queue.push(packet); //add to queue
-            save_packet(packet); //save to flash
+            //save_packet(packet); //save to flash
             num_packets++; //we now have one more packet
             loc = 0;  //reset where the sensors are writing to in the buffer
+            measure_reads = 0;
         }
 }
 
@@ -115,19 +96,17 @@ void final_essential_tasks()
   }
 
   //pack the packet
-  uint8_t packet[PACKET_SIZE]; 
-  size_t p_loc = 0;
-  pack_packet(packet, p_loc, measure_buf);
+  Packet packet = Packet(num_packets, measure_buf, PACKET_SIZE); 
   message_queue.push(packet); //add to queue
-  save_packet(packet); //save to flash
+  //save_packet(packet); //save to flash
 
   //empty the queue
   while(!message_queue.isEmpty())
   {
-      uint8_t* currPacket;
-      currPacket = message_queue.peek();
+      Packet currPacket = message_queue.peek();
       uint16_t loc = PACKET_SIZE;
-      isbd.sendSBDBinary(currPacket, loc);
+      //isbd.sendSBDBinary(currPacket, loc);
+      printPacket(currPacket, PACKET_SIZE);
       message_queue.pop();
   }
 }
@@ -142,7 +121,8 @@ void final_nonessential_tasks()
   while(true) //run until power loss
   {
       //send a message to allow gps data to used for possible retrival
-      isbd.sendSBDBinary(final_message, final_message_length);  
+      //isbd.sendSBDBinary(final_message, final_message_length);
+      Serial.println("DONE");
       delay(60000); //wait 1 minute
   }
 }
@@ -173,16 +153,16 @@ void setup() {
     init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
 
     //iridium
+    /*
     isbd.begin();
     isbd.adjustSendReceiveTimeout(45);
     isbd.useMSSTMWorkaround(false);
     isbd.setPowerProfile(0);
-
+    */
+    Serial.begin(9600);
+    
     //flash chip
-    SerialFlash.begin(FLASH_PIN);
-
-    //timer events
-    timer.setTimeout(TIME_TO_SPLASH_DOWN, splashDown);
+    //SerialFlash.begin(FLASH_PIN);
 }
 
 void loop() {
@@ -194,10 +174,11 @@ void loop() {
       //transmit data packets from the queue
       if(!message_queue.isEmpty())
       {
-          uint8_t* packet;
-          packet = message_queue.peek();
+          Packet packet = message_queue.peek();
           uint16_t loc  = PACKET_SIZE;
-          isbd.sendSBDBinary(packet, loc);
+          //isbd.sendSBDBinary(packet, loc);
+          printPacket(packet, PACKET_SIZE);
+          long timeAt = millis();
           message_queue.pop();
       }
     }

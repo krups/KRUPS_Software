@@ -13,37 +13,56 @@ Date: 5/11/17
 
 #define TC_NUM (12)
 
-extern volatile int16_t num_packets;
+#include"Packet.h"
+
+extern int16_t measure_reads;
+extern int16_t num_packets;
+
 
 //Fake read funcitons for testing 
 void Read_gyro(uint8_t *buf, size_t &loc)
 {
-    append(buf, loc, 0+num_packets);
-    append(buf, loc, 1+num_packets);
-    append(buf, loc, 2+num_packets);
+    int t = int(millis()/1000);
+    append(buf, loc, t);
+    append(buf, loc, 2*t);
+    append(buf, loc, 3*t);
 }
 
 void Read_loaccel(uint8_t *buf, size_t &loc)
 {
-    append(buf, loc, 10+num_packets);
-    append(buf, loc, 11+num_packets);
-    append(buf, loc, 12+num_packets);
+    int t = int(millis()/1000);
+    append(buf, loc, t*t);
+    append(buf, loc, 2*t*t);
+    append(buf, loc, 3*t*t);
 }
 
 void Read_mag(uint8_t *buf, size_t &loc)
 {
-    append(buf, loc, 20+num_packets);
-    append(buf, loc, 21+num_packets);
-    append(buf, loc, 22+num_packets);
+    append(buf, loc, 7);
+    append(buf, loc, 5);
+    append(buf, loc, 3);
 }
 
 void Read_TC(uint8_t *buf, size_t &loc)
 {
+  int t = int(millis()/1000);
   for(int i = 0; i < TC_NUM; i++)
   {
-    append(buf, loc, i*7 + num_packets);
+    append(buf, loc, i+ num_packets);
   }
   delay(TC_NUM/3 * 100);
+}
+
+
+void printPacket(Packet packet, int32_t len)
+{
+  for(int i = 0; i < len; i++)
+  {
+    Serial.print(packet[i]);
+    Serial.print(",");
+  }
+  Serial.println();
+  Serial.println();
 }
 
 //empty funtions to allow compilation, do not effect testing
