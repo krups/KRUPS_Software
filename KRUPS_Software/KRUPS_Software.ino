@@ -71,10 +71,10 @@ void save_packet(uint8_t* packet)
 void do_tasks()
 {
         Serial.println("MEASURING");
-        Read_gyro(measure_buf, loc);        // 6 bytes
+        //Read_gyro(measure_buf, loc);        // 6 bytes
         Read_loaccel(measure_buf, loc);     // 6 bytes
         Read_mag(measure_buf, loc);         // 6 bytes
-        Read_TC(measure_buf, loc);          // 16 bytes
+        //Read_TC(measure_buf, loc);          // 16 bytes
         //Read_hiaccel(measure_buf, loc);     // 6 bytes
         delay(400);
 
@@ -165,6 +165,7 @@ bool ISBDCallback() {
 void setup() {
 
     Serial.begin(9600);
+    while(!Serial);
     Serial.println("1");
     //sensors
     init_Sensors(); 
