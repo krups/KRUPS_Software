@@ -5,9 +5,9 @@
 #include <SerialFlash.h>
 #include "Packet.h"
 
-#define TEST (true) //decides to use real of fake functions to allow testing
+#define TEST (false) //decides to use real or fake functions to allow testing
 #if TEST
-#include "debug.h"
+#include "Debug.h"
 #else
 #include <KRUPS_TC.h>
 #include <KRUPS_Sensor.h>
@@ -21,15 +21,29 @@
 volatile bool launched = false, ejected = true, splash_down = false;
 uint8_t measure_buf[BUFF_SIZE]; // holds readings to be stored in packets
 size_t loc = 0; //location in the buffer
-IridiumSBD isbd(Serial1);
+//IridiumSBD isbd(Serial1);
 int16_t num_packets = 0; //counter for number of packets to establish chronlogical order
 int16_t measure_reads = 0;
 QueueList<Packet> message_queue; //queue of messages left to send, messages pushed into front, pulled out back
+
 
 //messages for non essential tasks
 const uint8_t final_message[17] = {'C','O','M','E',' ','S','A','V','E',' ','M','E',' ','E','V','A','N'};
 const int final_message_length = 17;
 
+#if !TEST
+void printPacket(Packet packet, int32_t len)
+{
+  for(int i = 0; i < len; i++)
+  {
+    Serial.print(packet[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+  Serial.println();
+}
+
+#endif
 //REWRITE
 //Writes the packet to the onboard flash chip
 //prefers 256 byte chunks as the library says this amount is the most efficent
@@ -56,12 +70,13 @@ void save_packet(uint8_t* packet)
  */
 void do_tasks()
 {
+        Serial.println("MEASURING");
         Read_gyro(measure_buf, loc);        // 6 bytes
         Read_loaccel(measure_buf, loc);     // 6 bytes
         Read_mag(measure_buf, loc);         // 6 bytes
         Read_TC(measure_buf, loc);          // 16 bytes
         //Read_hiaccel(measure_buf, loc);     // 6 bytes
-        measure_reads++;
+        delay(400);
 
 
         if(millis() > TIME_TO_SPLASH_DOWN)
@@ -79,7 +94,7 @@ void do_tasks()
             //save_packet(packet); //save to flash
             num_packets++; //we now have one more packet
             loc = 0;  //reset where the sensors are writing to in the buffer
-            measure_reads = 0;
+            //measure_reads = 0;
         }
 }
 
@@ -139,6 +154,7 @@ void splashDown()
 
 ///run if packet is not sent on a try
 bool ISBDCallback() {
+    Serial.println("Call Back");
     if(!splash_down) //if we haven't splashed down
     {
           do_tasks(); //make sure we are still reading in measurements and building packets
@@ -147,10 +163,18 @@ bool ISBDCallback() {
 }
 
 void setup() {
+
+    Serial.begin(9600);
+    Serial.println("1");
     //sensors
-    init_Sensors(); init_TC();
+    init_Sensors(); 
+    Serial.println("2");
+    //init_TC();
+    Serial.println("3");
     init_accel_interrupt(1.75, .1, 0x00);       // set for launch detection
-    init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
+    Serial.println("4");
+    //init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
+    Serial.println("5");
 
     //iridium
     /*
@@ -159,13 +183,13 @@ void setup() {
     isbd.useMSSTMWorkaround(false);
     isbd.setPowerProfile(0);
     */
-    Serial.begin(9600);
     
     //flash chip
     //SerialFlash.begin(FLASH_PIN);
 }
 
 void loop() {
+    Serial.println("LOOOOP");
     //after ejection before splash_down routine
     if(!splash_down)
     {
@@ -178,7 +202,6 @@ void loop() {
           uint16_t loc  = PACKET_SIZE;
           //isbd.sendSBDBinary(packet, loc);
           printPacket(packet, PACKET_SIZE);
-          long timeAt = millis();
           message_queue.pop();
       }
     }
