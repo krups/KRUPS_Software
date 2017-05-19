@@ -165,6 +165,7 @@ bool ISBDCallback() {
 void setup() {
 
     Serial.begin(9600);
+    Serial1.begin(19200);
     //sensors
     Serial.println("Setting up");
     init_Sensors(); 
