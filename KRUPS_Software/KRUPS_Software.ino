@@ -68,6 +68,30 @@ void save_packet(uint8_t* packet)
 /*
  * Tasks to be completed at each measurement cycle
  */
+
+void startSendingMessage()
+{
+  //grab a packet
+  Packet packet = message_queue.peek();
+  uint16_t loc  = PACKET_SIZE;
+  //attempt to send
+  int response = isbd.sendSBDBinary(packet.getArrayBase(), loc);
+  //if it returns 0 message is sent
+  if(response == 0)
+  {
+    message_queue.pop(); //remove message from the list
+    printPacket(packet, PACKET_SIZE);
+  }
+  else //if not we have an error
+  {
+    //print the error
+    Serial.print("Error while sending packet: ");
+    Serial.println(response);
+    //don't remove from the queue
+  }
+}
+
+
 void do_tasks()
 {
         //Read_gyro(measure_buf, loc);        // 6 bytes
@@ -114,16 +138,7 @@ void final_essential_tasks()
   Serial.println("Final Empty");
   while(!message_queue.isEmpty())
   {
-      Packet currPacket = message_queue.peek();
-      uint16_t loc = PACKET_SIZE;
-      int err = isbd.sendSBDBinary(currPacket.getArrayBase(), loc);
-      Serial.print("Error: ");
-      Serial.println(err);
-      Serial.println("sent a packet");
-      printPacket(currPacket, PACKET_SIZE);
-      message_queue.pop();
-      Serial.print("In queue: ");
-      Serial.println(message_queue.count());
+    startSendingMessage();
   }
 }
 
@@ -135,6 +150,7 @@ void final_nonessential_tasks()
 {
   while(true) //run until power loss
   {
+      //TODO: change to read files from the flash chip and retransmit them
       //send a message to allow gps data to used for possible retrival
       isbd.sendSBDBinary(final_message, final_message_length);
       Serial.println("DONE");
@@ -181,11 +197,20 @@ void setup() {
     isbd.setPowerProfile(1);
     
     Serial.println("Starting modem");
-    int err = isbd.begin();
-    Serial.print("Error: ");
-    Serial.println(err);
+    int err;
+    do
+    {
+      err = isbd.begin(); //try to start modem
+      if(err != 0) //if we have an error report it
+      {
+        Serial.print("Error: ");
+        Serial.println(err);
+      }
+    }while(!(err == 0)) //if err == 0 we successfully started up
+    //report starting up and time to start up
     Serial.print("Started: ");
-    Serial.println(millis());
+    Serial.print(millis()/1000);
+    Serial.println(" s");
     
     //flash chip
     //SerialFlash.begin(FLASH_PIN);
@@ -201,18 +226,7 @@ void loop() {
       //transmit data packets from the queue
       if(!message_queue.isEmpty())
       {
-          Packet packet = message_queue.peek();
-          uint16_t loc  = PACKET_SIZE;
-          int err = isbd.sendSBDBinary(packet.getArrayBase(), loc);
-          Serial.print("Error: ");
-          Serial.println(err);
-          message_queue.pop();
-          Serial.println("sent a packet");
-          Serial.print("Total Packets: ");
-          Serial.println(num_packets);
-          Serial.print("In queue: ");
-          Serial.println(message_queue.count());
-          printPacket(packet, PACKET_SIZE);
+        startSendingMessage();
       }
     }
 }
