@@ -16,10 +16,18 @@
 
 //conversion constants for the sensors
 #define TC_CONVERSION (1)
-#define LOACCEL_CONVERSION (1)
+#define LOACCEL_CONVERSION (.001)
 #define HIACCEL_CONVERSION (1)
-#define MAG_CONVERSION (1)
+#define MAG_CONVERSION_XY (1100)
+#define MAG_CONVERSION_Z (980)
 #define GYRO_CONVERSION (1)
+#define DELTA_T (1)
+
+
+//unit conversion constants
+#define SENSORS_GRAVITY_STANDARD (9.80665F)                       /**< Earth's gravity in m/s^2 */
+#define SENSORS_GAUSS_TO_MICROTESLA       (100)                   /**< Gauss to micro-Tesla multiplier */
+
 
 using namespace std;
 
@@ -29,6 +37,7 @@ void printColor(string message, string color)
     cout << color << message << NC;
 }
 
+//prints a message using the given color and a newline
 void printColorLn(string message, string color)
 {
     cout << color << message << NC << endl;
@@ -74,45 +83,36 @@ void readPacketDesc(char* fileName, int& packetSize, int& headersize, string& pa
     return;
 }
 
+//inserts the value given into the file in a CSV format
 void CSVadd(ofstream& csv, string value)
 {
     csv << value << ',';
 }
 
-void CSVadd(ofstream& csv, double value)
+void CSVadd(ofstream& csv, float value)
 {
     csv << value << ',';
 }
 
-double getTCReading(Packet data, int& loc)
+float getTCReading(Packet data, int& loc)
 {
     int rawData = data[loc] + 256*data[loc+1];
     loc += 2;
-    double value = rawData * TC_CONVERSION;
+    float value = rawData * TC_CONVERSION;
     return value;
 }
 
-void getGyroReadings(Packet data, int& loc, double* readings)
+void getGyroReadings(Packet data, int& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
         int rawData = data[loc] + 256*data[loc+1];
         loc += 2;
-        readings[i] = rawData * GYRO_CONVERSION;
+        readings[i] = (float)rawData * GYRO_CONVERSION;
     }
 }
 
-void getLoAccelReadings(Packet data, int& loc, double* readings)
-{
-    for(int i = 0; i < 3; i++)
-    {
-        int rawData = data[loc] + 256*data[loc+1];
-        loc += 2;
-        readings[i] = rawData * LOACCEL_CONVERSION;
-    }
-}
-
-void getHiAccelReadings(Packet data, int& loc, double* readings)
+void getHiAccelReadings(Packet data, int& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
@@ -122,13 +122,35 @@ void getHiAccelReadings(Packet data, int& loc, double* readings)
     }
 }
 
-void getMagReadings(Packet data, int& loc, double* readings)
+void getLoAccelReadings(Packet data, int& loc, float* readings)
+{
+    for (int i = 0; i < 3; ++i)
+    {
+        uint8_t hi = data[loc];
+        uint8_t lo = data[loc + 1];
+        int16_t rawData = (int16_t)((lo | (hi << 8)) >> 4);
+        loc += 2;
+        readings[i] = (float(rawData) * LOACCEL_CONVERSION); //* SENSORS_GRAVITY_STANDARD; //sets reading in m/s^2
+    }
+}
+
+void getMagReadings(Packet data, int& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
-        int rawData = data[loc] + 256*data[loc+1];
+        uint8_t hi = data[loc];
+        uint8_t lo = data[loc + 1];
+        int16_t rawData = (int16_t)(lo | (hi << 8));
         loc += 2;
-        readings[i] = rawData * MAG_CONVERSION;
+
+        if(i != 2)
+        {
+        	readings[i] = float(rawData) / MAG_CONVERSION_XY * SENSORS_GAUSS_TO_MICROTESLA;
+        }
+        else
+        {
+        	readings[i] = float(rawData) / MAG_CONVERSION_Z * SENSORS_GAUSS_TO_MICROTESLA;
+        }
     }
 }
 
@@ -220,19 +242,20 @@ int main(int argc, char** argv)
                 CSVadd(commaList, "Temperature (Celcius)");
                 break;
             case '1': //loacccel
-                CSVadd(commaList, "Acceleration [X axis] (g-force)");
-                CSVadd(commaList, "Acceleration [Y axis] (g-force)");
-                CSVadd(commaList, "Acceleration [Z axis] (g-force)");
+                CSVadd(commaList, "Acceleration [X axis] (m/s^2)");
+                CSVadd(commaList, "Acceleration [Y axis] (m/s^2)");
+                CSVadd(commaList, "Acceleration [Z axis] (m/s^2)");
                 break;
             case '2': //hiaccel
-                CSVadd(commaList, "Acceleration [X axis] (g-force)");
-                CSVadd(commaList, "Acceleration [Y axis] (g-force)");
-                CSVadd(commaList, "Acceleration [Z axis] (g-force)");
+                CSVadd(commaList, "Acceleration [X axis] (m/s^2)");
+                CSVadd(commaList, "Acceleration [Y axis] (m/s^2)");
+                CSVadd(commaList, "Acceleration [Z axis] (m/s^2)");
                 break;
             case '3': //mag
-                CSVadd(commaList, "Magnetic Flux Density [X axis] (Gs)");
-                CSVadd(commaList, "Magnetic Flux Density [Y axis] (Gs)");
-                CSVadd(commaList, "Magnetic Flux Density [Z axis] (Gs)");
+                // u03bc is the mu character in unicode
+                CSVadd(commaList, "Magnetic Flux Density [X axis] (micro-Tesla)");
+                CSVadd(commaList, "Magnetic Flux Density [Y axis] (micro-Tesla)");
+                CSVadd(commaList, "Magnetic Flux Density [Z axis] (micro-Tesla)");
                 break;
             case '4': //gyro
                 CSVadd(commaList, "Rotation [X axis] (degrees/s)");
@@ -263,11 +286,11 @@ int main(int argc, char** argv)
         {
             //pulling info in for each instrument in order
             CSVadd(commaList, time);
-            double readings[3];
-            double tcRead;
-            for(int i = 0; i < measurementOrder.size(); i += 2)
+            float readings[3];
+            float tcRead;
+            for(int j  = 0; j < measurementOrder.size(); j += 2)
             {
-                switch(measurementOrder[i])
+                switch(measurementOrder[j])
                 {
                     case '0': //TC
                         tcRead = getTCReading(packet, loc);
@@ -275,30 +298,30 @@ int main(int argc, char** argv)
                         break;
                     case '1': //loacccel
                         getLoAccelReadings(packet, loc, readings);
-                        for(int i = 0; i < 3; i++)
+                        for(int k = 0; k < 3; k++)
                         {
-                            CSVadd(commaList, readings[i]);
+                            CSVadd(commaList, readings[k]);
                         }
                         break;
                     case '2': //hiaccel
                         getHiAccelReadings(packet, loc, readings);
-                        for(int i = 0; i < 3; i++)
+                        for(int k = 0; k < 3; k++)
                         {
-                            CSVadd(commaList, readings[i]);
+                            CSVadd(commaList, readings[k]);
                         }
                         break;
                     case '3': //mag
                         getMagReadings(packet, loc, readings);
-                        for(int i = 0; i < 3; i++)
+                        for(int k = 0; k < 3; k++)
                         {
-                            CSVadd(commaList, readings[i]);
+                            CSVadd(commaList, readings[k]);
                         }
                         break;
                     case '4': //gyro
                         getGyroReadings(packet, loc, readings);
-                        for(int i = 0; i < 3; i++)
+                        for(int k = 0; k < 3; k++)
                         {
-                            CSVadd(commaList, readings[i]);
+                            CSVadd(commaList, readings[k]);
                         }
                         break;
                     default:
@@ -309,12 +332,15 @@ int main(int argc, char** argv)
                         break;
                 }
             }
-            time += .4;
+            time += DELTA_T;
             commaList << endl;
         }
     }
+
     printColorLn("done", GREEN);
-    
+    printColor("Saving file...", YELLOW);
+    commaList.close();
+    printColorLn("done", GREEN);
     return 0;
 }
 
