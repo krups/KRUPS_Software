@@ -206,7 +206,7 @@ void setup() {
         Serial.print("Error: ");
         Serial.println(err);
       }
-    }while(!(err == 0)) //if err == 0 we successfully started up
+    }while(!(err == 0)); //if err == 0 we successfully started up
     //report starting up and time to start up
     Serial.print("Started: ");
     Serial.print(millis()/1000);
