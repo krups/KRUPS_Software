@@ -14,14 +14,14 @@
 #endif
 
 
-#define BUFF_SIZE   (1960) //size of the measurement buffer
+#define BUFF_SIZE   (2000) //size of the measurement buffer
 #define FLASH_PIN (0) //select pin for the flash chip
 #define TIME_TO_SPLASH_DOWN (350000) //Time until splash down routine begins in ms
 
 volatile bool launched = false, ejected = true, splash_down = false;
 uint8_t measure_buf[BUFF_SIZE]; // holds readings to be stored in packets
 size_t loc = 0; //location in the buffer
-//IridiumSBD isbd(Serial1);
+IridiumSBD isbd(Serial1);
 int16_t num_packets = 0; //counter for number of packets to establish chronlogical order
 int16_t measure_reads = 0;
 QueueList<Packet> message_queue; //queue of messages left to send, messages pushed into front, pulled out back
@@ -42,8 +42,8 @@ void printPacket(Packet packet, int32_t len)
   Serial.println();
   Serial.println();
 }
-
 #endif
+
 //REWRITE
 //Writes the packet to the onboard flash chip
 //prefers 256 byte chunks as the library says this amount is the most efficent
@@ -70,19 +70,13 @@ void save_packet(uint8_t* packet)
  */
 void do_tasks()
 {
-        Serial.println("MEASURING");
         //Read_gyro(measure_buf, loc);        // 6 bytes
         Read_loaccel(measure_buf, loc);     // 6 bytes
         Read_mag(measure_buf, loc);         // 6 bytes
         //Read_TC(measure_buf, loc);          // 16 bytes
         //Read_hiaccel(measure_buf, loc);     // 6 bytes
         delay(400);
-
-
-        if(millis() > TIME_TO_SPLASH_DOWN)
-        {
-          splashDown();
-        }
+        Serial.println("Measured");
                 
         //NOTE: make sure packet_size-header_size is a mutliple of the number of bytes in a read cycle
         //to make sure no splicing occurs
@@ -91,10 +85,22 @@ void do_tasks()
             //new packet
             Packet packet = Packet(num_packets, measure_buf, PACKET_SIZE); 
             message_queue.push(packet); //add to queue
-            //save_packet(packet); //save to flash
             num_packets++; //we now have one more packet
+            Serial.println("Packet Added");
+            Serial.print("Total Packets: ");
+            Serial.println(num_packets);
+            Serial.print("In queue: ");
+            Serial.println(message_queue.count());
+            //save_packet(packet); //save to flash
+
+            //check if we've splashed down
+            if(millis() > TIME_TO_SPLASH_DOWN)
+            {
+              Serial.println("Splashing Down");
+              splashDown();
+            }
+            
             loc = 0;  //reset where the sensors are writing to in the buffer
-            //measure_reads = 0;
         }
 }
 
@@ -104,25 +110,20 @@ void do_tasks()
  */
 void final_essential_tasks()
 {
-  //fill the rest of the packet with junk so we dont get old data
-  for(int i = loc; i < PACKET_SIZE; i++)
-  {
-    measure_buf[i] = 255;
-  }
-
-  //pack the packet
-  Packet packet = Packet(num_packets, measure_buf, PACKET_SIZE); 
-  message_queue.push(packet); //add to queue
-  //save_packet(packet); //save to flash
-
   //empty the queue
+  Serial.println("Final Empty");
   while(!message_queue.isEmpty())
   {
       Packet currPacket = message_queue.peek();
       uint16_t loc = PACKET_SIZE;
-      //isbd.sendSBDBinary(currPacket, loc);
+      int err = isbd.sendSBDBinary(currPacket.getArrayBase(), loc);
+      Serial.print("Error: ");
+      Serial.println(err);
+      Serial.println("sent a packet");
       printPacket(currPacket, PACKET_SIZE);
       message_queue.pop();
+      Serial.print("In queue: ");
+      Serial.println(message_queue.count());
   }
 }
 
@@ -130,13 +131,12 @@ void final_essential_tasks()
  * tasks to complete after all final essential tasks are completed
  * while run until power loss
  */
- 
 void final_nonessential_tasks()
 {
   while(true) //run until power loss
   {
       //send a message to allow gps data to used for possible retrival
-      //isbd.sendSBDBinary(final_message, final_message_length);
+      isbd.sendSBDBinary(final_message, final_message_length);
       Serial.println("DONE");
       delay(60000); //wait 1 minute
   }
@@ -165,32 +165,33 @@ bool ISBDCallback() {
 void setup() {
 
     Serial.begin(9600);
-    while(!Serial);
-    Serial.println("1");
     //sensors
+    Serial.println("Setting up");
     init_Sensors(); 
-    Serial.println("2");
-    //init_TC();
-    Serial.println("3");
+    init_TC();
     init_accel_interrupt(1.75, .1, 0x00);       // set for launch detection
-    Serial.println("4");
-    //init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
-    Serial.println("5");
+    init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
 
     //iridium
-    /*
-    isbd.begin();
+    isbd.attachConsole(Serial);
+    isbd.attachDiags(Serial);
     isbd.adjustSendReceiveTimeout(45);
     isbd.useMSSTMWorkaround(false);
-    isbd.setPowerProfile(0);
-    */
+    isbd.setPowerProfile(1);
+    
+    Serial.println("Starting modem");
+    int err = isbd.begin();
+    Serial.print("Error: ");
+    Serial.println(err);
+    Serial.print("Started: ");
+    Serial.println(millis());
     
     //flash chip
     //SerialFlash.begin(FLASH_PIN);
+    Serial.println("Set up");
 }
 
 void loop() {
-    Serial.println("LOOOOP");
     //after ejection before splash_down routine
     if(!splash_down)
     {
@@ -201,9 +202,16 @@ void loop() {
       {
           Packet packet = message_queue.peek();
           uint16_t loc  = PACKET_SIZE;
-          //isbd.sendSBDBinary(packet, loc);
-          printPacket(packet, PACKET_SIZE);
+          int err = isbd.sendSBDBinary(packet.getArrayBase(), loc);
+          Serial.print("Error: ");
+          Serial.println(err);
           message_queue.pop();
+          Serial.println("sent a packet");
+          Serial.print("Total Packets: ");
+          Serial.println(num_packets);
+          Serial.print("In queue: ");
+          Serial.println(message_queue.count());
+          printPacket(packet, PACKET_SIZE);
       }
     }
 }
