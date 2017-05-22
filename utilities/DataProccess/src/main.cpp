@@ -126,9 +126,9 @@ void getLoAccelReadings(Packet data, int& loc, float* readings)
 {
     for (int i = 0; i < 3; ++i)
     {
-        uint8_t hi = data[loc];
-        uint8_t lo = data[loc + 1];
-        int16_t rawData = (int16_t)((lo | (hi << 8)) >> 4);
+        uint8_t lo = data[loc];
+        uint8_t hi = data[loc + 1];
+        int16_t rawData = (int16_t)((lo | (hi << 8)));
         loc += 2;
         readings[i] = (float(rawData) * LOACCEL_CONVERSION); //* SENSORS_GRAVITY_STANDARD; //sets reading in m/s^2
     }
@@ -138,8 +138,8 @@ void getMagReadings(Packet data, int& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
-        uint8_t hi = data[loc];
-        uint8_t lo = data[loc + 1];
+        uint8_t lo = data[loc];
+        uint8_t hi = data[loc + 1];
         int16_t rawData = (int16_t)(lo | (hi << 8));
         loc += 2;
 
