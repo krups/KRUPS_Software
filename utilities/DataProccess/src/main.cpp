@@ -21,7 +21,7 @@
 #define MAG_CONVERSION_XY (1100)
 #define MAG_CONVERSION_Z (980)
 #define GYRO_CONVERSION (1)
-#define DELTA_T (1)
+#define DELTA_T (.4)
 
 
 //unit conversion constants
@@ -183,10 +183,10 @@ int main(int argc, char** argv)
     printColorLn("done", GREEN);
     //cout << measurementOrder << endl;
 
-    string fileName; //current file
-    string dir;
+    string fileName = ""; //current file
+    string dir  = "";
     getline(fileList, dir);
-    if(dir[dir.size()] != '/')
+    if(dir[dir.size()-1] != '/')
         dir += '/';
 
     //for each file

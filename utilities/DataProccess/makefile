@@ -15,19 +15,19 @@ OBJECT = $(addprefix $(OBJECTDIR)/,$(OBJECTS))
 $(PROGRAMNAME):$(OBJECT) $(SOURCEDIR)/main.cpp $(SOURCEDIR)/quicksort.cpp
 	@echo
 	@echo "$(YELLOW)compliling program $@...$(NC)"
-	g++ -std=c++11 -g -o $(OUTPUTDIR)/$@ 	$^
+	g++ -std=c++11 -fno-stack-protector -g -o $(OUTPUTDIR)/$@ 	$^
 	@echo  "$(GREEN)Success$(NC)"
 
 $(OBJECTDIR)/%.o : $(SOURCEDIR)/%.cpp $(SOURCEDIR)/%.h
 	@echo
 	@echo "$(YELLOW)compliling $@ with header...$(NC)"
-	g++ -std=c++11 -g -c -o $@ $<
+	g++ -std=c++11 -fno-stack-protector -g -c -o $@ $<
 	@echo "$(GREEN)Success$(NC)"
 
 $(OBJECTDIR)/%.o : $(SOURCEDIR)/%.cpp 
 	@echo
 	@echo "$(YELLOW)compiling $@...$(NC)"
-	g++ -std=c++11 -g -c -o $@ $^
+	g++ -std=c++11 -fno-stack-protector -g -c -o $@ $^
 	@echo "$(GREEN)Success$(NC)"
 
 clean:
