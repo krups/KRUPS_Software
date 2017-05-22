@@ -40,6 +40,7 @@ void gyro_int(void);
 Adafruit_L3GD20_Unified gyro;
 Adafruit_LSM303_Accel_Unified accel;
 Adafruit_LSM303_Mag_Unified mag;
+Adafruit_LSM9DS1 sense;
 sensors_event_t gyro_event, accel_event, mag_event;
 
 void write8(byte address, byte reg, byte value)
@@ -118,6 +119,47 @@ void Read_loaccel(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
 	append(buf, loc, accel.raw.z + accelZcorr);
 }
 
+// Reads all axis of the LSM303 magnetometer and appends the values to
+// the end of the input buffer, and moves the location pointer accordingly
+void Read_mag(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
+	mag.read();
+	append(buf, loc, mag.raw.x + magXcorr);
+	append(buf, loc, mag.raw.y + magYcorr);
+	append(buf, loc, mag.raw.z + magZcorr);
+}
+
+// Reads all axis of the LSM9DS1 gyro and appends values to
+// end of the input buffer and moves location pointer accordingly
+void readGyro(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
+    sense.readGyro();
+    append(buf, loc, sense.gyroData.x + gyroXcorr);
+    append(buf, loc, sense.gyroData.y + gyroYcorr);
+    append(buf, loc, sense.gyroData.z + gyroZcorr);
+}
+
+// Reads all axis of the LSM9DS1 accel and appends the values to
+// end of the input buffer and moves location pointer accordingly
+void readAccel(uint8_t*buf, size_t &loc) { // requires 6 bytes in buffer
+    sense.readAccel();
+    append(buf, loc, sense.accelData.x + accelXcorr);
+    append(buf, loc, sense.accelData.y + accelYcorr);
+    append(buf, loc, sense.accelData.z + accelZcorr);
+}
+
+// Reads all axis of the LSM9DS1 magnetometer and appends the values to
+// end of the input buffer and moves location pointer accordingly
+void readMag(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
+    sense.readMag();
+    append(buf, loc, sense.magData.x + magXcorr);
+    append(buf, loc, sense.magData.y + magYcorr);
+    appedn(buf, loc, sense.magData.z + magZcorr);
+}
+
+void readTemp(uint8_t *buf, size_t &loc) {
+    sense.readTemp();
+    append(buf, loc, sense.temperature);
+}
+
 // Reads all axis of the ADXL377 accel and appends the values to
 // the end of the input buffer, and moves the location pointer accordingly
 void Read_hiaccel(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
@@ -128,15 +170,6 @@ void Read_hiaccel(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
 	append(buf, loc, xval + hiXcorr);
 	append(buf, loc, yval + hiYcorr);
 	append(buf, loc, zval + hiZcorr);
-}
-
-// Reads all axis of the LSM303 magnetometer and appends the values to
-// the end of the input buffer, and moves the location pointer accordingly
-void Read_mag(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
-	mag.read();
-	append(buf, loc, mag.raw.x + magXcorr);
-	append(buf, loc, mag.raw.y + magYcorr);
-	append(buf, loc, mag.raw.z + magZcorr);
 }
 
 // accel ISR sets launched bool
