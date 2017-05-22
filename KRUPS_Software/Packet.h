@@ -35,6 +35,11 @@ public:
     return data;
   }
 
+  uint8_t* getArrayAt(int i)
+  {
+    return &data[i];
+  }
+
 	//overides the access operator to get data
 	uint8_t operator[](int i)
 	{
