@@ -49,7 +49,7 @@ void compressSensor(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, s
 	do {
 	heatshrink_encoder_sink(&heatshrink, input_buffer+accum, len-accum, &input_size);
 	heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 52, &output_size);
-	accum += intput_size; outlen += output_size;
+	accum += input_size; outlen += output_size;
 	} while(accum < len);
 }
 
