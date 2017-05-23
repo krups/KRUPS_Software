@@ -50,7 +50,7 @@ void compressSensor(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, s
 	heatshrink_encoder_sink(&heatshrink, input_buffer+accum, len-accum, &input_size);
 	heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 52, &output_size);
 	accum += intput_size; outlen += output_size;
-	} while(assum < len);
+	} while(accum < len);
 }
 
 // second half of compression function, polls all data from the state machine and
