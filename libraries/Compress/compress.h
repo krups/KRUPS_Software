@@ -20,26 +20,49 @@ union stoe {
 	int8_t e[2];
 };
 
-// Takes an input array of bits, and the length of the array and outputs an array that 
+// Takes an input array of bits, and the length of the array and outputs an array that
 // has been compressed using the heatshrink compression library, and it's length
 void compress(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, size_t &outlen) {
     // Reset a global heatshrink encoder object
     heatshrink_encoder_reset(&heatshrink);
-    
+
     size_t input_size, output_size, accum=0;
     outlen = 0;
 
     do { // Push the input into Heatshrink encoder state machine
 		heatshrink_encoder_sink(&heatshrink, input_buffer+accum, len-accum, &input_size);
-		heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 32, &output_size);
+		heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 52, &output_size);
         accum += input_size; outlen += output_size;
     } while(accum < len);
-    
+
     // Ensure all output has been retrieved
     while(HSER_FINISH_MORE == heatshrink_encoder_finish(&heatshrink) ) {
-        heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 32, &output_size);
+        heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 52, &output_size);
         outlen += output_size;
     }
+}
+
+// first half of compression function, use to sink measurements as they are taken
+void compressSensor(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, size_t &outlen) {
+	size_t input_size, output_size, accum = 0;
+
+	do {
+	heatshrink_encoder_sink(&heatshrink, input_buffer+accum, len-accum, &input_size);
+	heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 52, &output_size);
+	accum += intput_size; outlen += output_size;
+	} while(assum < len);
+}
+
+// second half of compression function, polls all data from the state machine and
+// resets after finishing the compression
+void compressFinish(uint8_t *output_buffer, size_t &outlen) {
+	size_t output_size;
+
+	while(HSER_FINISH_MORE == heatshrink_encoder_finish(&heatshrink) ) {
+		heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 52, &output_size);
+		outlen += output_size;
+	}
+	heatshrink_encoder_reset(&heatshrink);
 }
 
 // Takes a previously compressed array of bits, and the array's length and decompresses the array
@@ -52,13 +75,13 @@ void decompress(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, size_
 
     do { // Push the input into Heatshrink encoder state machine
         heatshrink_decoder_sink(&heatexpand, input_buffer+accum, len-accum, &input_size);
-        heatshrink_decoder_poll(&heatexpand, output_buffer+outlen, 32, &output_size);
+        heatshrink_decoder_poll(&heatexpand, output_buffer+outlen, 52, &output_size);
         accum += input_size; outlen += output_size;
     } while(accum < len);
-    
+
     // Ensure all output has been retrieved
     while(HSDR_FINISH_MORE == heatshrink_decoder_finish(&heatexpand) ) {
-        heatshrink_decoder_poll(&heatexpand, output_buffer+outlen, 32, &output_size);
+        heatshrink_decoder_poll(&heatexpand, output_buffer+outlen, 52, &output_size);
         outlen += output_size;
     }
 }
