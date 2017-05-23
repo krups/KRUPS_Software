@@ -20,6 +20,10 @@ union stoe {
 	int8_t e[2];
 };
 
+void initializeCompression() {
+	heatshrink_encoder_reset(&heatshrink);
+}
+
 // Takes an input array of bits, and the length of the array and outputs an array that
 // has been compressed using the heatshrink compression library, and it's length
 void compress(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, size_t &outlen) {
