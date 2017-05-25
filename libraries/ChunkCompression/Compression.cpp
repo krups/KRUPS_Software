@@ -1,5 +1,4 @@
-#include "Compression.h"
-#include "brieflzCompress.h"
+#include "ChunkCompression.h"
 
 using namespace std;
 
