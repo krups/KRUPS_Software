@@ -9,6 +9,7 @@ BufferedCompressor::BufferedCompressor()
 	bufferLoc = 0;
 	dataLoc = 0;
 	decompressedLength = 0;
+  isReady = false;
 }
 
 bool BufferedCompressor::isFull()
@@ -27,6 +28,21 @@ void BufferedCompressor::checkIfFull()
 	if(dataLoc > DATA_SIZE * .9)
 	{
 		isReady = true;
+	}
+}
+
+void BufferedCompressor::emptyBuffer()
+{
+  if(bufferLoc != 0)
+	{
+		//compress contents of buffer into the data array
+		unsigned long compressedTo = blz_pack(buffer, data+dataLoc, bufferLoc, BufferedCompressor::workSpace);
+		//track total bytes compressed
+		decompressedLength += bufferLoc;
+		//reset buffer
+		bufferLoc = 0;
+		//scoot data buffer up by how much was added
+		dataLoc += compressedTo;
 	}
 }
 
@@ -55,23 +71,35 @@ void BufferedCompressor::sink(const uint8_t* input, size_t len)
 unsigned long BufferedCompressor::readOut(uint8_t* a, size_t& len)
 {
 	//if the buffer is not compress the rest
-	if(bufferLoc != 0)
-	{
-		//compress contents of buffer into the data array
-		unsigned long compressedTo = blz_pack(buffer, data+dataLoc, bufferLoc, BufferedCompressor::workSpace);
-		//track total bytes compressed
-		decompressedLength += bufferLoc;
-		//reset buffer
-		bufferLoc = 0;
-		//scoot data buffer up by how much was added
-		dataLoc += compressedTo;
-	}
+  emptyBuffer();
 
 	for(int i = 0;  i < dataLoc; i++)
 	{
 		a[i] = data[i];
 	}
 	len = dataLoc; //set the len of data copied
+  unsigned long ans = decompressedLength; // save the decompressedLength
 	isReady = false; //reset full bit
-	return decompressedLength;
+  //reset to initial
+  bufferLoc = 0;
+  dataLoc = 0;
+  decompressedLength = 0;
+  isReady = false;
+
+	return ans;
+}
+
+Packet BufferedCompressor::readIntoPacket()
+{
+  emptyBuffer();
+  Packet p = Packet(decompressedLength, data, dataLoc);
+
+  //reset to initial
+  bufferLoc = 0;
+  dataLoc = 0;
+  decompressedLength = 0;
+  isReady = false;
+
+
+  return p;
 }

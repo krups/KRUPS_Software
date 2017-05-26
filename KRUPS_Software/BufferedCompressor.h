@@ -1,7 +1,7 @@
 #ifndef BUFFEREDCOMPRESSOR_H
 #define BUFFEREDCOMPRESSOR_H
 
-#include "brieflzCompress.h"
+#include <brieflzCompress.h>
 #include <cstdint>
 
 #define WORKSPACESIZE ((1UL << 8) * 8)
@@ -19,6 +19,7 @@ private:
 	size_t bufferLoc, dataLoc; //pos in the two arrays
 	bool isReady; //flag to let users know data is filled above threshold
 	void checkIfFull(); //sees if the full bit should be set
+	void emptyBuffer(); //finshes up compression by empyting the rest of the buffer
 	unsigned long decompressedLength; //size when decompressed
 
 public:
@@ -28,6 +29,7 @@ public:
 	unsigned long getLen(); //returns the len of the data array
 	//reads the data from the data array into a, sets len to the len of data stored, and returns the decompressed length
 	unsigned long readOut(uint8_t* a, size_t& len);
+	Packet readIntoPacket(); //reads the data directly into a packet;
 };
 
 #endif
