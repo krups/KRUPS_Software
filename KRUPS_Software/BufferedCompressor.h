@@ -21,10 +21,12 @@ private:
 	void checkIfFull(); //sees if the full bit should be set
 	void emptyBuffer(); //finshes up compression by empyting the rest of the buffer
 	unsigned long decompressedLength; //size when decompressed
+	bool isEmpty; //lets the user know if any info is in the buffer or data arrays
 
 public:
 	BufferedCompressor();
 	bool isFull(); //checks if data is ready to be read out
+	bool isEmpty(); //return value of the isEmpty flag
 	void sink(const uint8_t* data, size_t len); //fills the buffer with the provided data
 	unsigned long getLen(); //returns the len of the data array
 	//reads the data from the data array into a, sets len to the len of data stored, and returns the decompressed length

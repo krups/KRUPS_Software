@@ -10,11 +10,17 @@ BufferedCompressor::BufferedCompressor()
 	dataLoc = 0;
 	decompressedLength = 0;
   isReady = false;
+  isEmpty = true;
 }
 
 bool BufferedCompressor::isFull()
 {
 	return isReady;
+}
+
+bool BufferedCompressor::isEmpty()
+{
+	return isEmpty;
 }
 
 
@@ -48,6 +54,7 @@ void BufferedCompressor::emptyBuffer()
 
 void BufferedCompressor::sink(const uint8_t* input, size_t len)
 {
+  isEmpty = false; //data is in the compressor
 	for(int i = 0; i < len; i++)
 	{
 		if(bufferLoc == CHUNK_SIZE) //if buffer has been filled compress and move to begining
@@ -85,6 +92,7 @@ unsigned long BufferedCompressor::readOut(uint8_t* a, size_t& len)
   dataLoc = 0;
   decompressedLength = 0;
   isReady = false;
+  isEmpty = true;
 
 	return ans;
 }
@@ -99,7 +107,7 @@ Packet BufferedCompressor::readIntoPacket()
   dataLoc = 0;
   decompressedLength = 0;
   isReady = false;
-
+  isEmpty = true;
 
   return p;
 }
