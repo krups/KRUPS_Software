@@ -94,7 +94,7 @@ void CSVadd(ofstream& csv, float value)
     csv << value << ',';
 }
 
-float getTCReading(Packet data, int& loc)
+float getTCReading(uint8_t* data, int& loc)
 {
     int rawData = data[loc] + 256*data[loc+1];
     loc += 2;
@@ -102,7 +102,7 @@ float getTCReading(Packet data, int& loc)
     return value;
 }
 
-void getGyroReadings(Packet data, int& loc, float* readings)
+void getGyroReadings(uint8_t* data, int& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
@@ -112,7 +112,7 @@ void getGyroReadings(Packet data, int& loc, float* readings)
     }
 }
 
-void getHiAccelReadings(Packet data, int& loc, float* readings)
+void getHiAccelReadings(uint8_t* data, int& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
@@ -122,7 +122,7 @@ void getHiAccelReadings(Packet data, int& loc, float* readings)
     }
 }
 
-void getLoAccelReadings(Packet data, int& loc, float* readings)
+void getLoAccelReadings(uint8_t* data, int& loc, float* readings)
 {
     for (int i = 0; i < 3; ++i)
     {
@@ -134,7 +134,7 @@ void getLoAccelReadings(Packet data, int& loc, float* readings)
     }
 }
 
-void getMagReadings(Packet data, int& loc, float* readings)
+void getMagReadings(uint8_t* data, int& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
@@ -206,12 +206,19 @@ int main(int argc, char** argv)
         //read the data in
         if(!currPacket.read(packetData, packetSize))
         {
-            printColorLn("failed to be read", RED);
+            if(currPacket.eof())
+            {
+            }
+            else
+            {
+                printColorLn("failed to be read", RED);
+            }
         }
-        //if the need to be decompressed do that here
-
+        
+        int charsRead = currPacket.gcount();
+        cout << "Len: " << charsRead << endl;
         //add to the list
-        Packet p = Packet(packetData, packetSize);
+        Packet p = Packet(packetData, charsRead);
         packetList.push_back(p);
         printColorLn("done", GREEN);
         currPacket.close();
@@ -275,14 +282,25 @@ int main(int argc, char** argv)
 
     //output data to the CSV
     //for each packet
-    printColor("Getting readings...", YELLOW);
+    printColorLn("Analyzing packets...", YELLOW);
     double time = 0;
+    uint8_t decompressed[6000];
     for(int i = 0; i < packetList.size(); i++)
     {
-        int loc = headerSize; //drop the header info
-        Packet packet = packetList[i];
+
+        //decompress the current packet
+        printColor("decompressing...", YELLOW);
+        size_t outLen = 0;
+        int a = decompress(packetList[i].getArrayAt(headerSize), //give it the array from the start of the header 
+            packetList[i].getLen() - headerSize, 
+            decompressed, outLen);
+        cout << a << endl;
+        printColor("done", GREEN);
+        cout << "decompressed length: " << outLen << endl;
+
+        int loc = 0;
         //iterate over the length of the packet
-        while(loc < packetSize)
+        while(loc < outLen)
         {
             //pulling info in for each instrument in order
             CSVadd(commaList, time);
@@ -293,32 +311,32 @@ int main(int argc, char** argv)
                 switch(measurementOrder[j])
                 {
                     case '0': //TC
-                        tcRead = getTCReading(packet, loc);
+                        tcRead = getTCReading(decompressed, loc);
                         CSVadd(commaList, tcRead);
                         break;
                     case '1': //loacccel
-                        getLoAccelReadings(packet, loc, readings);
+                        getLoAccelReadings(decompressed, loc, readings);
                         for(int k = 0; k < 3; k++)
                         {
                             CSVadd(commaList, readings[k]);
                         }
                         break;
                     case '2': //hiaccel
-                        getHiAccelReadings(packet, loc, readings);
+                        getHiAccelReadings(decompressed, loc, readings);
                         for(int k = 0; k < 3; k++)
                         {
                             CSVadd(commaList, readings[k]);
                         }
                         break;
                     case '3': //mag
-                        getMagReadings(packet, loc, readings);
+                        getMagReadings(decompressed, loc, readings);
                         for(int k = 0; k < 3; k++)
                         {
                             CSVadd(commaList, readings[k]);
                         }
                         break;
                     case '4': //gyro
-                        getGyroReadings(packet, loc, readings);
+                        getGyroReadings(decompressed, loc, readings);
                         for(int k = 0; k < 3; k++)
                         {
                             CSVadd(commaList, readings[k]);

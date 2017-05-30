@@ -83,6 +83,7 @@ int main(int argc, char** argv)
 		{
 			currFile.close();
 			file++;
+			commaSep >> val;
 			if(!commaSep.eof())
 			{
 				name = "out/" + to_string(file) + ".bin";
