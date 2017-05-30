@@ -3,7 +3,7 @@
 
 #include <compress.h>
 
-#define PACKET_SIZE (1958) //size of a packets to send
+#define PACKET_SIZE (1960) //size of a packets to send
 #define HEADER_SIZE (2)  //number of bytes taken up in the packet by buffer
 
 class Packet
@@ -17,7 +17,7 @@ public:
       data[i] = 0;
     }
   }
-  
+
 	//creates a packet and loads data
 	Packet(int16_t number, uint8_t a[], int16_t len)
 	{
@@ -28,6 +28,8 @@ public:
 		{
 			data[i] = a[i - loc];
 		}
+
+    length = len;
 	}
 
   uint8_t* getArrayBase()
@@ -40,6 +42,11 @@ public:
     return &data[i];
   }
 
+  uint16_t getLength()
+  {
+    return Length;
+  }
+
 	//overides the access operator to get data
 	uint8_t operator[](int i)
 	{
@@ -47,6 +54,7 @@ public:
 	}
 private:
 	uint8_t data[PACKET_SIZE];
+  uint16_t length;
 };
 
 
