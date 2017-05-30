@@ -1,10 +1,8 @@
 #include <Arduino.h>
-#include <compress.h>
 #include <IridiumSBD.h>
 #include <QueueList.h>
 #include <SerialFlash.h>
-#include <String>
-#include "Packet.h"
+//#include <String>
 #include "BufferedCompressor.h"
 
 #define TEST (false) //decides to use real or fake functions to allow testing
@@ -60,7 +58,7 @@ void save_time(uint8_t* buff, size_t& loc)
   buff[loc] = oneByte;
   loc++;
   buff[loc] = twoByte;
-  loc++
+  loc++;
 }
 
 
@@ -174,6 +172,8 @@ void do_tasks()
         //Read_TC(measure_buf, loc);          // 16 bytes
         //Read_hiaccel(measure_buf, loc);     // 6 bytes
         delay(400);
+        Serial.print("Measring...");
+        Serial.println(measure_reads);
 
         //sink data into the correct compressor
         if(measure_reads == 0)
@@ -184,7 +184,7 @@ void do_tasks()
         {
           compressor.sink(measure_buf, loc); //puts the data into the compressor buffer
         }
-        measure_reads++ //incremeant measure_reads
+        measure_reads++; //incremeant measure_reads
         if(measure_reads > 3) //handle wrap around
         {
           measure_reads = 0;
@@ -193,11 +193,11 @@ void do_tasks()
 
         if(priorityCompressor.isFull()) //if the full bit is set we need to load out the data
         {
-          Packet p = priorityCompressor.readIntoPacket()
+          Packet p = priorityCompressor.readIntoPacket();
           Serial.println("Priority Packet added");
           priority_queue.push(p);
           Serial.println("Saving packet");
-          save_packet(p);
+          //save_packet(p);
           num_packets++;
           Serial.print("Total Packets: ");
           Serial.println(num_packets);
@@ -209,11 +209,11 @@ void do_tasks()
 
         if(compressor.isFull()) //if the full bit is set we need to load out the data
         {
-          Packet p = compressor.readIntoPacket()
+          Packet p = compressor.readIntoPacket();
           Serial.println("Packet added");
           message_queue.push(p);
           Serial.println("Saving packet");
-          save_packet(p);
+          //save_packet(p);
           num_packets++;
           Serial.print("Total Packets: ");
           Serial.println(num_packets);
@@ -241,7 +241,7 @@ void splashDown()
 
   if(!priorityCompressor.isEmpty())
   {
-    Packet p = priorityCompressor.readIntoPacket()
+    Packet p = priorityCompressor.readIntoPacket();
     Serial.println("Priority Packet added");
     priority_queue.push(p);
     Serial.println("Saving packet");
@@ -251,7 +251,7 @@ void splashDown()
 
   if(!compressor.isEmpty())
   {
-    Packet p = compressor.readIntoPacket()
+    Packet p = compressor.readIntoPacket();
     Serial.println("Packet added");
     message_queue.push(p);
     Serial.println("Saving packet");
@@ -264,7 +264,7 @@ void splashDown()
   Serial.print("In queue: ");
   Serial.println(message_queue.count());
   Serial.print("In  priority_queue: ");
-  Serial.println(priority_queue.count())
+  Serial.println(priority_queue.count());
 }
 
 ///run if packet is not sent on a try

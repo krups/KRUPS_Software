@@ -1,10 +1,11 @@
 #ifndef PACKET_H
 #define PACKET_H
 
-#include <compress.h>
 
 #define PACKET_SIZE (1960) //size of a packets to send
 #define HEADER_SIZE (2)  //number of bytes taken up in the packet by buffer
+
+#include<compress.h>
 
 class Packet
 {
@@ -44,7 +45,7 @@ public:
 
   uint16_t getLength()
   {
-    return Length;
+    return length;
   }
 
 	//overides the access operator to get data
