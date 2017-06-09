@@ -4,6 +4,7 @@
 
 #define PACKET_SIZE (1960) //size of a packets to send
 #define HEADER_SIZE (2)  //number of bytes taken up in the packet by buffer
+#define PACKET_MAX (PACKET_SIZE - HEADER_SIZE)
 
 #include<compress.h>
 
@@ -24,13 +25,13 @@ public:
 	{
 		size_t loc = 0;
 		append(data, loc, number);
-
-		for(int i = loc; i < len; i++)
+		for(int i = 0; i < len; i++)
 		{
-			data[i] = a[i - loc];
+			data[loc+i] = a[i];
 		}
+   loc += len;
 
-    length = len;
+    length = loc;
 	}
 
   uint8_t* getArrayBase()

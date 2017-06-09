@@ -2,10 +2,12 @@
 #include <IridiumSBD.h>
 #include <QueueList.h>
 #include <SerialFlash.h>
+#include <elapsedMillis.h>
+#include <brieflzCompress.h>
+#include "Packet.h"
 //#include <String>
-#include "BufferedCompressor.h"
 
-#define TEST (false) //decides to use real or fake functions to allow testing
+#define TEST (true) //decides to use real or fake functions to allow testing
 #if TEST
 #include "Debug.h"
 #else
@@ -14,21 +16,36 @@
 #endif
 
 
-#define BUFFER_SIZE   (2000) //size of the measurement buffer
+#define BUFFER_SIZE   (12000) //size of the measurement buffer aboutthe max ammount of data that can be compressed to packet size
 #define FLASH_PIN (0) //select pin for the flash chip
-#define TIME_TO_SPLASH_DOWN (350000) //Time until splash down routine begins in ms
+#define TIME_TO_SPLASH_DOWN (340000) //Time until splash down routine begins in ms
+#define WORKSPACESIZE ((1UL << 8)*8) //extra space for compression work
+#define MEASURE_READ (53) //size of all the bytes coming in form the sensors
 
 volatile bool launched = false, ejected = true, splash_down = false, data_resend_complete = false;
-uint8_t measure_buf[BUFFER_SIZE]; // holds readings to be stored in packets
-size_t loc = 0; //location in the buffer
+
+uint8_t priority_buf[BUFFER_SIZE]; // holds readings to be stored in priority packets
+size_t ploc = 0; //location in the buffer
+elapsedMillis timeSinceP;
+
+uint8_t regular_buf[BUFFER_SIZE];
+size_t rloc = 0; //location in regular buffer
+elapsedMillis timeSinceR;
+
+uint8_t compressedData[10000]; //storage for compressed data
+uint8_t workspace[WORKSPACESIZE];
+
 IridiumSBD isbd(Serial1);
+
 int16_t num_packets = 0; //counter for number of packets to establish chronlogical order
 int16_t measure_reads = 0; //tells which cycle read we are on (0-3) to determine where to put data
+
 QueueList<Packet> message_queue; //queue of messages left to send, messages pushed into front, pulled out back
 QueueList<Packet> priority_queue; //queue of messages to send with higher priority
-bool inCallBack = false;
-BufferedCompressor compressor = BufferedCompressor(); // compressor for the packets
-BufferedCompressor priorityCompressor = BufferedCompressor(); //compressor for priority packets
+
+bool inCallBack = false; //used for debug out put
+
+int16_t fTemp = 1;
 
 #if !TEST
 void printPacket(Packet packet, int32_t len)
@@ -50,15 +67,9 @@ in the buffer
 void save_time(uint8_t* buff, size_t& loc)
 {
   long time = millis();
-  uint8_t zeroByte = time | 0xFF;
-  uint8_t oneByte = time >> 8;
-  uint8_t twoByte = time >> 16;
-  buff[loc] = zeroByte;
-  loc++;
-  buff[loc] = oneByte;
-  loc++;
-  buff[loc] = twoByte;
-  loc++;
+  buff[loc++] = time & 0xFF; //low byte
+  buff[loc++] = time >> 8; //mid byte
+  buff[loc++] = time >> 16; //top byte
 }
 
 
@@ -130,25 +141,17 @@ void loadFlashToQueue()
 /*
  * Protocol to send a message, with error handling
  */
-void startSendingMessage(bool priority)
+void startSendingMessage(QueueList<Packet>& queue)
 {
   //grab a packet
-  Packet packet;
-  if(priority)
-  {
-    packet = priority_queue.peek();
-  }
-  else
-  {
-    packet = message_queue.peek();
-  }
+  Packet packet = queue.peek();
   uint16_t loc  = packet.getLength();
   //attempt to send
   int response = isbd.sendSBDBinary(packet.getArrayBase(), loc);
   //if it returns 0 message is sent
   if(response == 0)
   {
-    message_queue.pop(); //remove message from the list
+    queue.pop(); //remove message from the list
     printPacket(packet, packet.getLength());
   }
   else //if not we have an error
@@ -160,69 +163,126 @@ void startSendingMessage(bool priority)
   }
 }
 
+
+void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
+{
+    unsigned long compressLen = 0;
+    size_t priorloc;
+    priorloc = loc;
+    save_time(buff, loc); // 3 bytes
+    Read_gyro(buff, loc);        // 6 bytes
+    Read_loaccel(buff, loc);     // 6 bytes
+    Read_hiaccel(buff, loc);     // 6 bytes
+    Read_mag(buff, loc);         // 6 bytes
+    Read_temp(buff, loc); //2 bytes
+   static elapsedMillis timeUsed;
+   for(int i = 0; i < 4; i++)
+   {
+    //set the mux posistion
+    setMUX(i);
+    //track time used to do extra work
+    timeUsed = 0;
+    //do extra work
+    if(i == 0)
+    {
+      if(priorloc > PACKET_MAX)
+      {
+        //Serial.print("Compressing: ");
+        //Serial.println(priorloc);
+        compressLen = blz_pack(buff, compressedData, priorloc, workspace);
+        //Serial.print("To: ");
+        //Serial.println(compressLen);
+      }
+      if(compressLen > PACKET_MAX) //we need to roll back one measurement and make a packet
+      {
+        //Serial.println("PACKET READY");
+        compressLen = blz_pack(buff, compressedData, priorloc - MEASURE_READ, workspace);
+        //Serial.print(priorloc - MEASURE_READ);
+        //Serial.print(" compressed to ");
+        //Serial.println(compressLen);
+        //Serial.print(100 - 100 * double(compressLen)/(priorloc - MEASURE_READ));
+        //Serial.println("%");
+        Packet p = Packet(priorloc - MEASURE_READ, compressedData, compressLen);
+        //Serial.println("Packet added");
+        queue.push(p);
+        Serial.println(p.getLength());
+        //Serial.println("Saving packet");
+        //save_packet(p);
+        num_packets++;
+        //Serial.print("Total Packets: ");
+        //Serial.println(num_packets);
+        //Serial.print("In  priority_queue: ");
+        //Serial.println(priority_queue.count());
+        //Serial.print("In queue: ");
+        //Serial.println(message_queue.count());
+        //Serial.println("Copying data to front");
+        for(int j = 0; j < loc - (priorloc - MEASURE_READ); j++)
+        {
+			    buff[j] = buff[priorloc - MEASURE_READ + j];
+        }
+        loc -= (priorloc - MEASURE_READ);
+
+        if(&queue == &priority_queue)
+        {
+          //Serial.print("Time since last packet: ");
+          //Serial.println(timeSinceP);
+          timeSinceP = 0;
+        }
+        else
+        {
+          //Serial.print("Time since last packet: ");
+          //Serial.println(timeSinceR);
+          timeSinceR = 0;
+        }
+      }
+    }
+    if(timeUsed > 4)
+    {
+      //Serial.print("Time used: ");
+      //Serial.println(timeUsed);
+    }
+
+
+    //if we didn't already use enough time wait the rest
+	  while (timeUsed < 100);
+    
+    //read the data in
+    Read_TC_at_MUX(buff, loc); //6 bytes per call
+    /*
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.print((float)(buff[loc-6]+256*buff[loc-5])*.25);
+    fTemp = buff[loc-6] + 256*buff[loc-5];
+    Serial.print("deg C");
+    Serial.print('\t');
+    */
+   }
+   //Serial.println();
+}
+
 /*
  * Tasks to be completed at each measurement cycle
  */
 void do_tasks()
 {
-        save_time(measure_buf,loc); // 3 bytes
-        //Read_gyro(measure_buf, loc);        // 6 bytes
-        Read_loaccel(measure_buf, loc);     // 6 bytes
-        Read_mag(measure_buf, loc);         // 6 bytes
-        //Read_TC(measure_buf, loc);          // 16 bytes
-        //Read_hiaccel(measure_buf, loc);     // 6 bytes
-        delay(400);
-        Serial.print("Measring...");
-        Serial.println(measure_reads);
-
-        //sink data into the correct compressor
+        //pull data into the priority buff
         if(measure_reads == 0)
-        {
-            priorityCompressor.sink(measure_buf, loc);
+        { 
+          readInData(priority_buf, ploc, priority_queue);
+          //Serial.println(ploc);
         }
+        //put data into the regular buff
         else
         {
-          compressor.sink(measure_buf, loc); //puts the data into the compressor buffer
+          readInData(regular_buf, rloc, message_queue);
+          //Serial.println(rloc);
         }
+        
         measure_reads++; //incremeant measure_reads
         if(measure_reads > 3) //handle wrap around
         {
           measure_reads = 0;
         }
-        loc = 0; //reset where data is being read into the buffer
-
-        if(priorityCompressor.isFull()) //if the full bit is set we need to load out the data
-        {
-          Packet p = priorityCompressor.readIntoPacket();
-          Serial.println("Priority Packet added");
-          priority_queue.push(p);
-          Serial.println("Saving packet");
-          //save_packet(p);
-          num_packets++;
-          Serial.print("Total Packets: ");
-          Serial.println(num_packets);
-          Serial.print("In  priority_queue: ");
-          Serial.println(priority_queue.count());
-          Serial.print("In queue: ");
-          Serial.println(message_queue.count());
-        }
-
-        if(compressor.isFull()) //if the full bit is set we need to load out the data
-        {
-          Packet p = compressor.readIntoPacket();
-          Serial.println("Packet added");
-          message_queue.push(p);
-          Serial.println("Saving packet");
-          //save_packet(p);
-          num_packets++;
-          Serial.print("Total Packets: ");
-          Serial.println(num_packets);
-          Serial.print("In queue: ");
-          Serial.println(message_queue.count());
-          Serial.print("In  priority_queue: ");
-          Serial.println(priority_queue.count());
-        }
-
 
         //check splashDown
         if(millis() > TIME_TO_SPLASH_DOWN)
@@ -290,6 +350,7 @@ void setup() {
 
     Serial.begin(9600);
     Serial1.begin(19200);
+    while(!Serial1);
     //sensors
     Serial.println("Setting up");
     init_Sensors();
@@ -303,6 +364,9 @@ void setup() {
     isbd.adjustSendReceiveTimeout(45);
     isbd.useMSSTMWorkaround(false);
     isbd.setPowerProfile(1);
+        
+    timeSinceR = 0;
+    timeSinceP = 0;
 
     Serial.println("Starting modem");
     int err;
@@ -333,17 +397,19 @@ void loop() {
     }
     else if(!data_resend_complete) // if we have splashed down retransmit data
     {
+      Serial.println("Resend");
+      data_resend_complete = true;
       //loadFlashToQueue(); //reload saved data and retransmit
     }
 
     if(!priority_queue.isEmpty()) //if there is priority data to send, do so
     {
-      startSendingMessage(true); //send a message from the priority list
+      startSendingMessage(priority_queue); //send a message from the priority list
       inCallBack = false;
     }
     else if(!message_queue.isEmpty()) //if no priority data, check regular data
     {
-      startSendingMessage(false); //send a message from the non priority list
+      startSendingMessage(message_queue); //send a message from the non priority list
       inCallBack = false;
     }
 }

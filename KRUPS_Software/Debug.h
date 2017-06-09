@@ -14,10 +14,11 @@ Date: 5/11/17
 #define TC_NUM (12)
 
 #include"Packet.h"
+#include<compress.h>
 
 extern int16_t measure_reads;
 extern int16_t num_packets;
-
+int mux = 0;
 
 //Fake read funcitons for testing 
 void Read_gyro(uint8_t *buf, size_t &loc)
@@ -36,6 +37,14 @@ void Read_loaccel(uint8_t *buf, size_t &loc)
     append(buf, loc, 3*t*t);
 }
 
+void Read_hiaccel(uint8_t *buf, size_t &loc)
+{
+    int t = int(millis()/1000);
+    append(buf, loc, t+5);
+    append(buf, loc, t+6);
+    append(buf, loc, t+7);
+}
+
 void Read_mag(uint8_t *buf, size_t &loc)
 {
     append(buf, loc, 7);
@@ -43,16 +52,24 @@ void Read_mag(uint8_t *buf, size_t &loc)
     append(buf, loc, 3);
 }
 
-void Read_TC(uint8_t *buf, size_t &loc)
+void Read_temp(uint8_t *buf, size_t &loc)
 {
-  int t = int(millis()/1000);
-  for(int i = 0; i < TC_NUM; i++)
-  {
-    append(buf, loc, i+ num_packets);
-  }
-  delay(TC_NUM/3 * 100);
+    static int timesRead = 0;
+    append(buf, loc, timesRead);
+    timesRead++;
 }
 
+void setMUX(int j)
+{
+  mux = j;
+}
+
+void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
+{
+  append(buf, loc, 240 + 3*mux + 0);
+  append(buf, loc, 240 + 3*mux + 1);
+  append(buf, loc, 240 + 3*mux + 2);
+}
 
 void printPacket(Packet packet, int32_t len)
 {
