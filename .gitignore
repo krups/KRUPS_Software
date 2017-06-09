@@ -1,6 +1,9 @@
 bin/
+/**/*.txt
 *.o
 *.csv
 *.bin
 *.sbd
 *.zip
+*.sln
+*.vcxproj
