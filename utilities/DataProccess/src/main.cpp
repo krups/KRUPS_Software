@@ -232,6 +232,7 @@ int main(int argc, char** argv)
         return -1;
     }
     cout << measurementSize << endl;
+    cout << headerSize << endl;
     vector<Packet> packetList; //data of files once read in
     printColorLn("done", GREEN);
 
@@ -288,14 +289,30 @@ int main(int argc, char** argv)
         //decompress the current packet
         Packet currPacket = packetList[i];
         int decompressSize = currPacket[0] + 256*currPacket[1];
+        for(int j = 0; j < headerSize; j++)
+        {
+            cout << int(currPacket[j]) << endl;
+        }
         //cout << "Decompress Size: " << decompressSize << endl;
-        int dataOut = blz_depack(currPacket.getArrayAt(2), decompressData, decompressSize);
+        int dataOut = blz_depack(currPacket.getArrayAt(headerSize), decompressData, decompressSize);
+        cout << dataOut << " " << decompressSize << " " << i << endl;
         if(dataOut != decompressSize)
         {
             printColorLn("decompression error", RED);
-            cout << dataOut << " " << decompressSize << endl;
+            cout << dataOut << " " << decompressSize << " " << i << endl;
             return -1;
         }
+
+        if(dataOut % 53 != 0)
+        {
+            printColorLn("not mod 53", RED);
+            return -1;
+        }
+        for(int j = 0; j < 106; j++)
+        {
+            cout << int(decompressData[j]) << " ";
+        }
+        cout << endl;
         //cout << dataOut << endl;
 
         //iterate over the packet, pulling out each measure cyle into its own array
@@ -308,7 +325,12 @@ int main(int argc, char** argv)
             }
             size_t loc = 0;
             double check = getTime(currRead, loc);
-            cout << j << ": " << check  << endl;
+            cout << j << ": " << check  << '\t';
+            for(int k = 0; k < 3; k++)
+            {
+                cout << int(currRead[k]) << " ";
+            }
+            cout << endl;
             measurmentReads.push_back(currRead);
         }
         cout << measurmentReads.size() << endl;
