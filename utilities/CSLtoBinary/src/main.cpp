@@ -30,18 +30,12 @@ int main(int argc, char** argv)
 	int perFile;
 	if(argc == 2)
 	{
-		allInOne = true;
-		perFile = 0;
-	}
-	else if(argc == 3)
-	{
-		allInOne = false;
-		perFile = atoi(argv[2]);
+
 	}
 	else
 	{
-				printColorLn("Usage ./CSLtoBin <file to be converted> or ./CSLtoBin <file to be converted> <number of bytes per file>", RED);
-				return -1;
+		printColorLn("Usage ./CSLtoBin <file to be converted>", RED);
+		return -1;
 	}
 
 	printColor("Opening file: ", YELLOW);
@@ -65,31 +59,35 @@ int main(int argc, char** argv)
 	uint8_t conv;
 	int file = 0;
 	int bytesRead = 0;
-	
+	int bytesToRead;
+	char newline;
+	commaSep >> bytesToRead;
 	ofstream currFile;
+	//open the output file
 	string name = "out/"+to_string(file) + ".bin";
 	currFile.open(name.c_str(), ios::out | ios::binary);
 	
 	printColorLn("...", YELLOW);
+	cout << bytesToRead << endl;
 	
 	string line;
 	while(!commaSep.eof())
 	{
-		commaSep >> val;
-		conv = val;
-		bytesRead++;
-		currFile.write((char*)&conv, sizeof(uint8_t));
-		if(bytesRead == perFile && !allInOne )
+		for(int i = 0; i < bytesToRead; i++)
 		{
-			currFile.close();
-			file++;
-			if(!commaSep.eof())
-			{
-				name = "out/" + to_string(file) + ".bin";
-				currFile.open(name.c_str(), ios::out | ios::binary);
-				printColorLn("...", YELLOW);
-			}
-			bytesRead = 0;
+			commaSep >> val;
+			conv = val;
+			currFile.write((char*)&conv, sizeof(uint8_t));
+		}
+		currFile.close();
+		file++;
+		commaSep >> bytesToRead;
+		if(!commaSep.eof())
+		{
+			name = "out/" + to_string(file) + ".bin";
+			currFile.open(name.c_str(), ios::out | ios::binary);
+			printColorLn("...", YELLOW);
+			cout << bytesToRead << endl;
 		}
 	}
 	currFile.close();

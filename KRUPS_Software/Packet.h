@@ -1,10 +1,12 @@
 #ifndef PACKET_H
 #define PACKET_H
 
-#include <compress.h>
 
-#define PACKET_SIZE (1958) //size of a packets to send
-#define HEADER_SIZE (2)  //number of bytes taken up in the packet by buffer
+#define PACKET_SIZE (1960) //size of a packets to send
+#define HEADER_SIZE (13)  //number of bytes taken up in the packet by buffer
+#define PACKET_MAX (PACKET_SIZE - HEADER_SIZE)
+
+#include<compress.h>
 
 class Packet
 {
@@ -17,17 +19,23 @@ public:
       data[i] = 0;
     }
   }
-  
+
 	//creates a packet and loads data
 	Packet(int16_t number, uint8_t a[], int16_t len)
 	{
 		size_t loc = 0;
-		append(data, loc, number);
-
-		for(int i = loc; i < len; i++)
+		append(data, loc, number); //append decompress length to the front of the packet
+    for(loc; loc < HEADER_SIZE; loc++) //init the debug data slots to 0
+    {
+      data[loc] = 0;
+    }
+		for(int i = 0; i < len; i++) //copy over the data
 		{
-			data[i] = a[i - loc];
+			data[loc+i] = a[i];
 		}
+   loc += len;
+
+    length = loc;
 	}
 
   uint8_t* getArrayBase()
@@ -40,13 +48,20 @@ public:
     return &data[i];
   }
 
+  uint16_t getLength()
+  {
+    return length;
+  }
+
 	//overides the access operator to get data
 	uint8_t operator[](int i)
 	{
 		return data[i];
 	}
+
 private:
 	uint8_t data[PACKET_SIZE];
+  uint16_t length;
 };
 
 

@@ -3,6 +3,7 @@
 #ifndef KRUPS_TC_H
 #define KRUPS_TC_H
 #include <compress.h>
+#include <SPI.h>
 
 #define DEBUG		(0)
 
@@ -11,23 +12,25 @@
 #define PINMUX1		(3)
 #define PINCS1		(8)
 #define PINCS2		(7)
+#define PINCS3		()
 #define PINSO		(12)
 #define CLK			(13)
+
+#define NUM_TC (12)
+
+int muxPos;
 
 // initializes the Thermocouple converter and the associated multiplexors
 void init_TC(void) {
 	pinMode(PINEN, OUTPUT);
 	pinMode(PINMUX0, OUTPUT);
 	pinMode(PINMUX1, OUTPUT);
-	pinMode(PINSO, INPUT);
-	pinMode(PINCS1, OUTPUT);
-	pinMode(PINCS2, OUTPUT);
-	pinMode(CLK, OUTPUT);
 
-	digitalWrite(PINEN, HIGH);   	// enable on
+	digitalWrite(PINEN, HIGH);   		// enable on
 	digitalWrite(PINMUX0, LOW);     	// low, low = channel 1
 	digitalWrite(PINMUX1, LOW);
-	digitalWrite(CLK, LOW);     	//put clock in low
+	muxPos = 0;
+	SPI.begin();
 }
 
 // Sets the output channel of the multiplexors
@@ -55,29 +58,20 @@ void setMUX(int j) {
 // read the output of the thermocouple converter and return the value
 // returns all ones (-.25 C) if an error was detected
 int16_t spiread32(int PINCS) {
-	int i, d = 0;
 	digitalWrite(PINCS, LOW);
-
-	for (i = 31; i >= 0; i--) {
-		digitalWrite(CLK, LOW);
-
-		d <<= 1;
-		if (digitalRead(PINSO)) {
-			d |= 1;
-			//Serial.print("1");
-		}
-		//else Serial.print("0");
-		digitalWrite(CLK, HIGH);
-	}
+	SPI.beginTransaction(SPISettings(14000000, MSBFIRST, SPI_MODE0));
+	int d = SPI.transfer(0x00);
+	d = (d<<8) + SPI.transfer(0x00);
+	d = (d<<8) + SPI.transfer(0x00);
+	d = (d<<8) + SPI.transfer(0x00);
+	SPI.endTransaction(); digitalWrite(PINCS, HIGH);
 	if (d & 0x10000) {
 		d = 0xFFFFFFFF;
-		//if ( d & 0x0004 ) d = -999999;
-		//else if ( d & 0x0002 ) d = -99999;
-		//else if ( d & 0x0001 ) d = -9999;
+		//if ( d & 0x0004 ) d = -999999;			// acknowledge short to VCC error
+		//else if ( d & 0x0002 ) d = -99999;		// acknowledge short to GND error
+		//else if ( d & 0x0001 ) d = -9999;			// acknowledge open circuit error
 	}
-	//else d = (d >> 18) & 0x00000FFFF;
-
-	digitalWrite(PINCS, HIGH);
+	//else d = (d >> 18) & 0x00000FFFF;				// shift and mask return value
 	return d >> 18;
 }
 
@@ -97,6 +91,23 @@ void Read_TC(uint8_t *buf, size_t &loc) {
 		Serial.print(temperatures[j]);
 		#endif
 	}
+}
+
+void incMux()
+{
+	setMUX(muxPos);
+	muxPos++;
+	if(muxPos == 4)
+	{
+		muxPos = 0;
+	}
+}
+
+void Read_TC_atMUX(uint8_t *buf, size_t &loc)
+{
+	append(buf, loc, spiread32(PINCS1));
+	append(buf, loc, spiread32(PINCS2));
+	append(buf, loc, spiread32(PINCS3));
 }
 
 #endif

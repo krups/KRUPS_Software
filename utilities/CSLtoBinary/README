@@ -1,27 +1,22 @@
 Author: Collin Dietz
 Email: c4dietz@gmail.com
-Date: 5/17/17
+Date: 6/9/17
 
 This command line utility takes a file of space separated 8 bit numbers (written as numbers 0 -255)
-
 and out puts the data into binary files.
+The input file should be formated as follows
 
-The command takes two command line args
-
-1. The file with the data in it (generally a .txt file)
-
-2. The number of  bytes to put in each file
-
-
-
-NOTE: if the second parameter is omitted all the bytes will be put into one file.
+<number of numbers on next line>
+<list of space seperated 8 bit integers>
+<number of numbers on next line>
+...
 
 
-Files are output into the ./out directory, numbered starting from 0, as .bin files
+The command takes one command line arg
+
+1. The file with the data in it (generally a .txt file
+
+Files are output into the ./out directory, numbered starting from 0, as .bin files with a new file being made after the
+listed amount of bytes are read in
 
 The program can be compilled by calling make in the project dir, and the program is output to the bin folder
-
-
-
-Known bug:
-Sometimes an extra .bin file is generated with just a 0 in it

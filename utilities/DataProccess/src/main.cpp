@@ -5,6 +5,7 @@
 #include "quicksort.h"
 #include <string>
 #include "Packet.h"
+#include "brieflzDecompress.h"
 
 #define TOTAL_ARGS (4)
 
@@ -16,17 +17,17 @@
 
 //conversion constants for the sensors
 #define TC_CONVERSION (1)
-#define LOACCEL_CONVERSION (.001)
+#define LOACCEL_CONVERSION (1)//(.001)
 #define HIACCEL_CONVERSION (1)
-#define MAG_CONVERSION_XY (1100)
-#define MAG_CONVERSION_Z (980)
+#define MAG_CONVERSION_XY (1)//(1100)
+#define MAG_CONVERSION_Z (1)//(980)
 #define GYRO_CONVERSION (1)
-#define DELTA_T (.4)
+#define TIME_CONVERSION (1)//(.001)
 
 
 //unit conversion constants
-#define SENSORS_GRAVITY_STANDARD (9.80665F)                       /**< Earth's gravity in m/s^2 */
-#define SENSORS_GAUSS_TO_MICROTESLA       (100)                   /**< Gauss to micro-Tesla multiplier */
+#define SENSORS_GRAVITY_STANDARD (1)//(9.80665F)                       /**< Earth's gravity in m/s^2 */
+#define SENSORS_GAUSS_TO_MICROTESLA  (1)//     (100)                   /**< Gauss to micro-Tesla multiplier */
 
 
 using namespace std;
@@ -43,22 +44,44 @@ void printColorLn(string message, string color)
     cout << color << message << NC << endl;
 }
 
-//compare function for quicksort
-bool sortPackets(Packet a, Packet b)
-{
-    //compare chronlogically by the counter in the first two bytes
-    uint16_t aNum = a[0] + 256* a[1];
-    uint16_t bNum = b[0] + 256* b[1];
-    if(aNum < bNum)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
 
+int getMeasureSize(string measurementOrder)
+{
+    int sum = 0;
+    for(int i = 0; i < measurementOrder.length(); i+=2)
+    {
+        switch(measurementOrder[i])
+        {
+            case '0': //TC
+                sum += 2;
+                break;
+            case '1': //loacccel
+                sum += 6;
+                break;
+            case '2': //hiaccel
+                sum += 6;
+                break;
+            case '3': //mag
+                // u03bc is the mu character in unicode
+                sum += 6;
+                break;
+            case '4': //gyro
+                sum += 6;
+                break;
+            case '5': //time
+                sum += 3;
+                break;  
+            default:
+                printColorLn("fail", RED);
+                printColorLn("not a known instrument, check the .desc file given", RED);
+                return -1;
+                break;
+        }
+
+    }
+
+    return sum;
+}
 
 //pulls relvant info form a specifically formated .dec file 
 //the three lines should look like
@@ -67,7 +90,7 @@ SIZE={number}
 HEADER_SIZE={number}
 PACKET_ORDER={comma seperated list of instruments}
 */
-void readPacketDesc(char* fileName, int& packetSize, int& headersize, string& packetOrder)
+void readPacketDesc(char* fileName, int& packetSize, int& headersize, string& packetOrder, int& measurementSize)
 {
     ifstream desc;
     desc.open(fileName);
@@ -80,8 +103,10 @@ void readPacketDesc(char* fileName, int& packetSize, int& headersize, string& pa
     headersize = stoi(small);
     packetOrder = order.substr(13, order.size());
     desc.close();
+    measurementSize = getMeasureSize(packetOrder);
     return;
 }
+
 
 //inserts the value given into the file in a CSV format
 void CSVadd(ofstream& csv, string value)
@@ -94,7 +119,7 @@ void CSVadd(ofstream& csv, float value)
     csv << value << ',';
 }
 
-float getTCReading(Packet data, int& loc)
+float getTCReading(vector<uint8_t> data, size_t& loc)
 {
     int rawData = data[loc] + 256*data[loc+1];
     loc += 2;
@@ -102,7 +127,15 @@ float getTCReading(Packet data, int& loc)
     return value;
 }
 
-void getGyroReadings(Packet data, int& loc, float* readings)
+float getTime(vector<uint8_t> data, size_t& loc)
+{
+    int rawData = data[loc] + 256*data[loc+1] + 65536*data[loc+2];
+    loc += 3;
+    float value = rawData * TIME_CONVERSION;
+    return value;
+}
+
+void getGyroReadings(vector<uint8_t> data, size_t& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
@@ -112,7 +145,7 @@ void getGyroReadings(Packet data, int& loc, float* readings)
     }
 }
 
-void getHiAccelReadings(Packet data, int& loc, float* readings)
+void getHiAccelReadings(vector<uint8_t> data, size_t& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
@@ -122,7 +155,7 @@ void getHiAccelReadings(Packet data, int& loc, float* readings)
     }
 }
 
-void getLoAccelReadings(Packet data, int& loc, float* readings)
+void getLoAccelReadings(vector<uint8_t> data, size_t& loc, float* readings)
 {
     for (int i = 0; i < 3; ++i)
     {
@@ -134,7 +167,7 @@ void getLoAccelReadings(Packet data, int& loc, float* readings)
     }
 }
 
-void getMagReadings(Packet data, int& loc, float* readings)
+void getMagReadings(vector<uint8_t> data, size_t& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
@@ -151,6 +184,20 @@ void getMagReadings(Packet data, int& loc, float* readings)
         {
         	readings[i] = float(rawData) / MAG_CONVERSION_Z * SENSORS_GAUSS_TO_MICROTESLA;
         }
+    }
+}
+
+bool sortMeasurement(vector<uint8_t> a, vector<uint8_t> b)
+{
+    int timeA = a[0] + 256 * a[1] + 65536 * a[2];
+    int timeB = b[0] + 256 * b[1] + 65536 * b[2];
+    if(timeA < timeB)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
     }
 }
 
@@ -176,12 +223,17 @@ int main(int argc, char** argv)
     }
 
     printColor("Reading packet info...", YELLOW);
-    int packetSize, headerSize;
+    int packetSize, headerSize, measurementSize;
     string measurementOrder;
-    readPacketDesc(argv[2], packetSize, headerSize, measurementOrder);
+    readPacketDesc(argv[2], packetSize, headerSize, measurementOrder, measurementSize); //get relevant info about the packet
+    if(measurementSize == -1)
+    {
+        return -1;
+    }
+    cout << measurementSize << endl;
+    cout << headerSize << endl;
     vector<Packet> packetList; //data of files once read in
     printColorLn("done", GREEN);
-    //cout << measurementOrder << endl;
 
     string fileName = ""; //current file
     string dir  = "";
@@ -206,12 +258,19 @@ int main(int argc, char** argv)
         //read the data in
         if(!currPacket.read(packetData, packetSize))
         {
-            printColorLn("failed to be read", RED);
+            if(currPacket.eof())
+            {
+            }
+            else
+            {
+                printColorLn("failed to be read", RED);
+            }
         }
-        //if the need to be decompressed do that here
-
+        
+        int charsRead = currPacket.gcount();
+        cout << "Len: " << charsRead << endl;
         //add to the list
-        Packet p = Packet(packetData, packetSize);
+        Packet p = Packet(packetData, charsRead);
         packetList.push_back(p);
         printColorLn("done", GREEN);
         currPacket.close();
@@ -220,9 +279,66 @@ int main(int argc, char** argv)
     //close relavant streams
     fileList.close();
 
-    //order the packets chronologically
-    printColor("organizing chronologically...", YELLOW);
-    qsort(packetList, sortPackets);
+    //decompress each packet, and pull the measure reads out
+    printColor("Decompressing and compiling data...", YELLOW);
+    uint8_t decompressData[8000];
+    vector< vector<uint8_t> > measurmentReads;
+    for(int i = 0; i < packetList.size(); i++)
+    {
+        //decompress the current packet
+        Packet currPacket = packetList[i];
+        int decompressSize = currPacket[0] + 256*currPacket[1];
+        for(int j = 0; j < headerSize; j++)
+        {
+            cout << int(currPacket[j]) << endl;
+        }
+        //cout << "Decompress Size: " << decompressSize << endl;
+        int dataOut = blz_depack(currPacket.getArrayAt(headerSize), decompressData, decompressSize);
+        cout << dataOut << " " << decompressSize << " " << i << endl;
+        if(dataOut != decompressSize)
+        {
+            printColorLn("decompression error", RED);
+            cout << dataOut << " " << decompressSize << " " << i << endl;
+            return -1;
+        }
+
+        if(dataOut % 53 != 0)
+        {
+            printColorLn("not mod 53", RED);
+            return -1;
+        }
+        for(int j = 0; j < 106; j++)
+        {
+            cout << int(decompressData[j]) << " ";
+        }
+        cout << endl;
+        //cout << dataOut << endl;
+
+        //iterate over the packet, pulling out each measure cyle into its own array
+        for(int j = 0; j < decompressSize; j += measurementSize)
+        {
+            vector<uint8_t> currRead;
+            for(int k = 0; k < measurementSize; k++)
+            {
+                currRead.push_back(decompressData[j+k]);
+            }
+            size_t loc = 0;
+            double check = getTime(currRead, loc);
+            cout << j << ": " << check  << '\t';
+            for(int k = 0; k < 3; k++)
+            {
+                cout << int(currRead[k]) << " ";
+            }
+            cout << endl;
+            measurmentReads.push_back(currRead);
+        }
+        cout << measurmentReads.size() << endl;
+    }
+    printColorLn("done", GREEN);
+    cout << measurmentReads.size() << endl;
+
+    printColor("Organizing measurment reads chronologically...", YELLOW);
+    qsort(measurmentReads, sortMeasurement);
     printColorLn("done", GREEN);
 
     //create the csv
@@ -233,7 +349,6 @@ int main(int argc, char** argv)
     //add Header
     //TODO: add numbers for duplicate sensors
     printColor("Adding Header...", YELLOW);
-    CSVadd(commaList, "Time (s)");
     for(int i = 0; i < measurementOrder.size(); i += 2)
     {
         switch(measurementOrder[i])
@@ -262,6 +377,9 @@ int main(int argc, char** argv)
                 CSVadd(commaList, "Rotation [Y axis] (degrees/s)");
                 CSVadd(commaList, "Rotation [Z axis] (degrees/s)");
                 break;
+            case '5': //time
+                CSVadd(commaList, "Time (s)");
+                break;  
             default:
                 printColorLn("fail", RED);
                 printColorLn("not a known instrument, check the .desc file given", RED);
@@ -275,66 +393,63 @@ int main(int argc, char** argv)
 
     //output data to the CSV
     //for each packet
-    printColor("Getting readings...", YELLOW);
-    double time = 0;
-    for(int i = 0; i < packetList.size(); i++)
+    printColorLn("Analyzing sensor readings...", YELLOW);
+    for(int i = 0; i < measurmentReads.size(); i++)
     {
-        int loc = headerSize; //drop the header info
-        Packet packet = packetList[i];
-        //iterate over the length of the packet
-        while(loc < packetSize)
+        vector<uint8_t> currRead = measurmentReads[i];
+        float readings[3];
+        float reading;
+        size_t loc = 0;
+        for(int j  = 0; j < measurementOrder.size(); j += 2)
         {
-            //pulling info in for each instrument in order
-            CSVadd(commaList, time);
-            float readings[3];
-            float tcRead;
-            for(int j  = 0; j < measurementOrder.size(); j += 2)
+            switch(measurementOrder[j])
             {
-                switch(measurementOrder[j])
-                {
-                    case '0': //TC
-                        tcRead = getTCReading(packet, loc);
-                        CSVadd(commaList, tcRead);
-                        break;
-                    case '1': //loacccel
-                        getLoAccelReadings(packet, loc, readings);
-                        for(int k = 0; k < 3; k++)
-                        {
-                            CSVadd(commaList, readings[k]);
-                        }
-                        break;
-                    case '2': //hiaccel
-                        getHiAccelReadings(packet, loc, readings);
-                        for(int k = 0; k < 3; k++)
-                        {
-                            CSVadd(commaList, readings[k]);
-                        }
-                        break;
-                    case '3': //mag
-                        getMagReadings(packet, loc, readings);
-                        for(int k = 0; k < 3; k++)
-                        {
-                            CSVadd(commaList, readings[k]);
-                        }
-                        break;
-                    case '4': //gyro
-                        getGyroReadings(packet, loc, readings);
-                        for(int k = 0; k < 3; k++)
-                        {
-                            CSVadd(commaList, readings[k]);
-                        }
-                        break;
-                    default:
-                        printColorLn("fail", RED);
-                        printColorLn("not a known instrument, check the .desc file given", RED);
-                        commaList.close();
-                        return 1;
-                        break;
-                }
+                case '0': //TC
+                    reading = getTCReading(currRead, loc);
+                    CSVadd(commaList, reading);
+                    break;
+                case '1': //loacccel
+                    getLoAccelReadings(currRead, loc, readings);
+                    for(int k = 0; k < 3; k++)
+                    {
+                        CSVadd(commaList, readings[k]);
+                    }
+                    break;
+                case '2': //hiaccel
+                    getHiAccelReadings(currRead, loc, readings);
+                    for(int k = 0; k < 3; k++)
+                    {
+                        CSVadd(commaList, readings[k]);
+                    }
+                    break;
+                case '3': //mag
+                    getMagReadings(currRead, loc, readings);
+                    for(int k = 0; k < 3; k++)
+                    {
+                        CSVadd(commaList, readings[k]);
+                    }
+                    break;
+                case '4': //gyro
+                    getGyroReadings(currRead, loc, readings);
+                    for(int k = 0; k < 3; k++)
+                    {
+                        CSVadd(commaList, readings[k]);
+                    }
+                    break;
+                case '5': //time
+                    reading = getTime(currRead, loc);
+                    CSVadd(commaList, reading);
+                    break;
+                default:
+                    printColorLn("fail", RED);
+                    printColorLn("not a known instrument, check the .desc file given", RED);
+                    commaList.close();
+                    return 1;
+                    break;
             }
-            time += DELTA_T;
-            commaList << endl;
         }
+        commaList << endl;
+        //cout << loc << endl;
     }
 
     printColorLn("done", GREEN);

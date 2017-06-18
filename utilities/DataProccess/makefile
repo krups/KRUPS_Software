@@ -3,9 +3,9 @@ GREEN = \033[1;32m
 RED = \033[1;31m
 NC = \033[0m
 
-SOURCES = heatshrink_encoder.cpp heatshrink_decoder.cpp
+SOURCES = depack.c depacks.c
 
-OBJECTS = $(SOURCES:.cpp=.o)
+OBJECTS = $(SOURCES:.c=.o)
 SOURCEDIR = ./src
 OBJECTDIR = ./objects
 OUTPUTDIR = ./bin
@@ -18,7 +18,7 @@ $(PROGRAMNAME):$(OBJECT) $(SOURCEDIR)/main.cpp $(SOURCEDIR)/quicksort.cpp
 	g++ -std=c++11 -fno-stack-protector -g -o $(OUTPUTDIR)/$@ 	$^
 	@echo  "$(GREEN)Success$(NC)"
 
-$(OBJECTDIR)/%.o : $(SOURCEDIR)/%.cpp $(SOURCEDIR)/%.h
+$(OBJECTDIR)/%.o : $(SOURCEDIR)/%.c $(SOURCEDIR)/brieflzDecompress.h
 	@echo
 	@echo "$(YELLOW)compliling $@ with header...$(NC)"
 	g++ -std=c++11 -fno-stack-protector -g -c -o $@ $<

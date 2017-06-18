@@ -4,11 +4,9 @@
 #ifndef COMPRESS_H
 #define COMPRESS_H
 
-#include "heatshrink_encoder.h"
-#include "heatshrink_decoder.h"
+#include <cstdint>
 
-heatshrink_encoder heatshrink;
-heatshrink_decoder heatexpand;
+using namespace std;
 
 union ftoh {
 	float f;
@@ -19,49 +17,6 @@ union stoe {
 	int16_t s;
 	int8_t e[2];
 };
-
-// Takes an input array of bits, and the length of the array and outputs an array that 
-// has been compressed using the heatshrink compression library, and it's length
-void compress(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, size_t &outlen) {
-    // Reset a global heatshrink encoder object
-    heatshrink_encoder_reset(&heatshrink);
-    
-    size_t input_size, output_size, accum=0;
-    outlen = 0;
-
-    do { // Push the input into Heatshrink encoder state machine
-		heatshrink_encoder_sink(&heatshrink, input_buffer+accum, len-accum, &input_size);
-		heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 32, &output_size);
-        accum += input_size; outlen += output_size;
-    } while(accum < len);
-    
-    // Ensure all output has been retrieved
-    while(HSER_FINISH_MORE == heatshrink_encoder_finish(&heatshrink) ) {
-        heatshrink_encoder_poll(&heatshrink, output_buffer+outlen, 32, &output_size);
-        outlen += output_size;
-    }
-}
-
-// Takes a previously compressed array of bits, and the array's length and decompresses the array
-// using the heatshrink compression library and outputs the array and it's length
-void decompress(uint8_t *input_buffer, size_t len, uint8_t *output_buffer, size_t &outlen) {
-    // Reset a global heatshrink decoder object
-    heatshrink_decoder_reset(&heatexpand);
-    size_t input_size, output_size, accum=0;
-    outlen = 0;
-
-    do { // Push the input into Heatshrink encoder state machine
-        heatshrink_decoder_sink(&heatexpand, input_buffer+accum, len-accum, &input_size);
-        heatshrink_decoder_poll(&heatexpand, output_buffer+outlen, 32, &output_size);
-        accum += input_size; outlen += output_size;
-    } while(accum < len);
-    
-    // Ensure all output has been retrieved
-    while(HSDR_FINISH_MORE == heatshrink_decoder_finish(&heatexpand) ) {
-        heatshrink_decoder_poll(&heatexpand, output_buffer+outlen, 32, &output_size);
-        outlen += output_size;
-    }
-}
 
 
 void append(uint8_t *buf, size_t &loc, int16_t input) {
