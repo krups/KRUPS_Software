@@ -1,10 +1,19 @@
 // Solenoid control requires 500ms to fully extend
+#define DEBUG   (false)
+
+#ifdef DEBUG
+    #define door    (15)
+    #define eject   (14)
+#else
+    #define door    (9) // Red LED
+    #define eject   (8) // Green LED
+#endif
 #define cam1    (11)
 #define cam2    (12)
-#define door    (15)
-#define eject   (14)
 #define timer   (13)
 #define sensor  (10)
+
+void cameraTrigger(void);
 
 void setup() {
     Serial.begin(9600);
@@ -18,34 +27,24 @@ void setup() {
     pinMode(timer, INPUT);
 
     // wait until timer event triggers
-    Serial.println("untriggered");
     while(digitalRead(timer) != HIGH);
-    Serial.println("triggered");
 
     // delay for safety
     delay(700);
-    Serial.println("done delaying");
  
     // cameras on
-    digitalWrite(cam1, HIGH);
-    digitalWrite(cam2, HIGH);
-    delay(100);
-    digitalWrite(cam1, LOW);
-    digitalWrite(cam2, LOW);
-    Serial.println("cams on");
+    cameraTrigger();
     
     // sensor board on
     digitalWrite(sensor, HIGH);
     delay(100);
     digitalWrite(sensor, LOW);
-    Serial.println("sensor on");
 
     delay(3500); //
     // door open
     digitalWrite(door, HIGH);
     delay(500);
     digitalWrite(door, LOW);
-    Serial.println("door open");
     
     // sensor board on (redundant)
     delay(2000);
@@ -57,24 +56,24 @@ void setup() {
     digitalWrite(eject, HIGH);
     delay(500);
     digitalWrite(eject, LOW);
-    Serial.println("ejected");
 }
 
 void loop() {
     delay(30000);   // run video for 30 seconds
     
     // cycle cameras off
-    digitalWrite(cam1, HIGH);
-    digitalWrite(cam2, HIGH);
-    delay(100);
-    digitalWrite(cam1, LOW);
-    digitalWrite(cam2, LOW);
+    cameraTrigger();
 
     // cycle cameras on
     delay(100);
+    cameraTrigger();
+}
+
+void cameraTrigger(void) {
     digitalWrite(cam1, HIGH);
     digitalWrite(cam2, HIGH);
     delay(100);
     digitalWrite(cam1, LOW);
     digitalWrite(cam2, LOW);
 }
+
