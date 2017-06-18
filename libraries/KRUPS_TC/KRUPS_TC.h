@@ -10,26 +10,26 @@
 #define PINEN		(5)
 #define PINMUX0		(2)
 #define PINMUX1		(3)
-#define PINCS1		(8)
+#define PINCS1		(9)
 #define PINCS2		(7)
-#define PINCS3		()
+#define PINCS3		(8)
 #define PINSO		(12)
 #define CLK			(13)
 
-#define NUM_TC (12)
-
-int muxPos;
 
 // initializes the Thermocouple converter and the associated multiplexors
 void init_TC(void) {
 	pinMode(PINEN, OUTPUT);
 	pinMode(PINMUX0, OUTPUT);
 	pinMode(PINMUX1, OUTPUT);
+	pinMode(PINCS1, OUTPUT);
+	pinMode(PINCS2, OUTPUT);
+	pinMode(PINCS3, OUTPUT);
+
 
 	digitalWrite(PINEN, HIGH);   		// enable on
 	digitalWrite(PINMUX0, LOW);     	// low, low = channel 1
 	digitalWrite(PINMUX1, LOW);
-	muxPos = 0;
 	SPI.begin();
 }
 
@@ -93,15 +93,6 @@ void Read_TC(uint8_t *buf, size_t &loc) {
 	}
 }
 
-void incMux()
-{
-	setMUX(muxPos);
-	muxPos++;
-	if(muxPos == 4)
-	{
-		muxPos = 0;
-	}
-}
 
 void Read_TC_atMUX(uint8_t *buf, size_t &loc)
 {
