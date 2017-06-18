@@ -18,9 +18,8 @@
  CONSTRUCTOR
  ***************************************************************************/
 
-void Adafruit_LSM9DS1::initI2C( TwoWire* wireBus, int32_t sensorID ) {
+void Adafruit_LSM9DS1::initI2C(int32_t sensorID ) {
     _i2c = true;
-    _wire = wireBus;
     _lsm9dso_sensorid_accel = sensorID + 1;
     _lsm9dso_sensorid_mag = sensorID + 2;
     _lsm9dso_sensorid_gyro = sensorID + 3;
@@ -34,11 +33,7 @@ void Adafruit_LSM9DS1::initI2C( TwoWire* wireBus, int32_t sensorID ) {
 
 // default
 Adafruit_LSM9DS1::Adafruit_LSM9DS1( int32_t sensorID ) {
-    initI2C(&Wire, sensorID);
-}
-
-Adafruit_LSM9DS1::Adafruit_LSM9DS1( TwoWire* wireBus, int32_t sensorID ) {
-    initI2C(wireBus, sensorID);
+    initI2C(sensorID);
 }
 
 Adafruit_LSM9DS1::Adafruit_LSM9DS1(int8_t xgcs, int8_t mcs, int32_t sensorID ) {
@@ -78,7 +73,7 @@ Adafruit_LSM9DS1::Adafruit_LSM9DS1(int8_t sclk, int8_t smiso, int8_t smosi, int8
 bool Adafruit_LSM9DS1::begin()
 {
   if (_i2c) {
-    _wire->begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_EXT, 400000);
+    Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_EXT, 400000);
   } else if (_clk == -1) {
     // Hardware SPI
     pinMode(_csxg, OUTPUT);
@@ -141,8 +136,6 @@ bool Adafruit_LSM9DS1::begin()
   //write8(MAGTYPE, LSM9DS1_REGISTER_CTRL_REG1_M, 0xFC); // high perf XY, 80 Hz ODR
   write8(MAGTYPE, LSM9DS1_REGISTER_CTRL_REG3_M, 0x00); // continuous mode
   //write8(MAGTYPE, LSM9DS1_REGISTER_CTRL_REG4_M, 0x0C); // high perf Z mode
-
-
 
   // Set default ranges for the various sensors
   setupAccel(LSM9DS1_ACCELRANGE_2G);
@@ -377,10 +370,10 @@ void Adafruit_LSM9DS1::write8(boolean type, byte reg, byte value)
     _cs = _csxg;
   }
   if (_i2c) {
-    _wire->beginTransmission(address);
-    _wire->write(reg);
-    _wire->write(value);
-    _wire->endTransmission();
+    Wire.beginTransmission(address);
+    Wire.write(reg);
+    Wire.write(value);
+    Wire.endTransmission();
     /*
     Serial.print("0x"); Serial.print(address, HEX);
     Serial.print(" $"); Serial.print(reg, HEX); Serial.print(" = ");
@@ -422,10 +415,10 @@ byte Adafruit_LSM9DS1::readBuffer(boolean type, byte reg, byte len, uint8_t *buf
   }
 
   if (_i2c) {
-    _wire->beginTransmission(address);
-    _wire->write(reg);
-    _wire->endTransmission();
-    if (_wire->requestFrom(address, (byte)len) != len) {
+    Wire.beginTransmission(address);
+    Wire.write(reg);
+    Wire.endTransmission();
+    if (Wire.requestFrom(address, (byte)len) != len) {
       return 0;
     }
 
@@ -435,7 +428,7 @@ byte Adafruit_LSM9DS1::readBuffer(boolean type, byte reg, byte len, uint8_t *buf
     */
 
     for (uint8_t i=0; i<len; i++) {
-      buffer[i] = _wire->read();
+      buffer[i] = Wire.read();
       //Serial.print(buffer[i], HEX); Serial.print(", ");
     }
     //Serial.println();
