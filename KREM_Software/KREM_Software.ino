@@ -34,7 +34,6 @@ void setup() {
  
     // cameras on
     cameraTrigger();
-    #ifdef Serial.println("cams on"); #endif
     
     // sensor board on
     digitalWrite(sensor, HIGH);
