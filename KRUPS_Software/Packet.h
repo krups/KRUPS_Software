@@ -3,7 +3,7 @@
 
 
 #define PACKET_SIZE (1960) //size of a packets to send
-#define HEADER_SIZE (2)  //number of bytes taken up in the packet by buffer
+#define HEADER_SIZE (13)  //number of bytes taken up in the packet by buffer
 #define PACKET_MAX (PACKET_SIZE - HEADER_SIZE)
 
 #include<compress.h>
@@ -24,8 +24,12 @@ public:
 	Packet(int16_t number, uint8_t a[], int16_t len)
 	{
 		size_t loc = 0;
-		append(data, loc, number);
-		for(int i = 0; i < len; i++)
+		append(data, loc, number); //append decompress length to the front of the packet
+    for(loc; loc < HEADER_SIZE; loc++) //init the debug data slots to 0
+    {
+      data[loc] = 0;
+    }
+		for(int i = 0; i < len; i++) //copy over the data
 		{
 			data[loc+i] = a[i];
 		}
@@ -54,6 +58,7 @@ public:
 	{
 		return data[i];
 	}
+
 private:
 	uint8_t data[PACKET_SIZE];
   uint16_t length;
