@@ -11,7 +11,14 @@ Date: 5/11/17
 #ifndef DEBUG_H
 #define DEBUG_H
 
-#define TC_NUM (12)
+#define PINEN   (5)
+#define PINMUX0   (2)
+#define PINMUX1   (3)
+#define PINCS1    (9)
+#define PINCS2    (7)
+#define PINCS3    (8)
+#define PINSO   (12)
+#define CLK     (13)
 
 #include"Packet.h"
 #include<compress.h>
@@ -66,9 +73,9 @@ void setMUX(int j)
 
 void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
 {
-  append(buf, loc, 240 + 3*mux + 0);
-  append(buf, loc, 240 + 3*mux + 1);
-  append(buf, loc, 240 + 3*mux + 2);
+  append(buf, loc, 20 + 3*mux + 0);
+  append(buf, loc, 20 + 3*mux + 1);
+  append(buf, loc, 20 + 3*mux + 2);
 }
 
 void printPacket(Packet packet, int32_t len)
@@ -85,7 +92,19 @@ void printPacket(Packet packet, int32_t len)
 //empty funtions to allow compilation, do not effect testing
 //and do not need to execute
 void init_Sensors() {}
-void init_TC() {}
+void init_TC() {
+   pinMode(PINEN, OUTPUT);
+  pinMode(PINMUX0, OUTPUT);
+  pinMode(PINMUX1, OUTPUT);
+  pinMode(PINCS1, OUTPUT);
+  pinMode(PINCS2, OUTPUT);
+  pinMode(PINCS3, OUTPUT);
+
+  digitalWrite(PINEN, HIGH);      // enable on
+  digitalWrite(PINMUX0, LOW);       // low, low = channel 1
+  digitalWrite(PINMUX1, LOW);
+  //SPI.begin();
+  }
 void init_accel_interrupt(float a, float b, int c) {}
 void init_gyro_interrupt(int a, int b, int c) {}
 
