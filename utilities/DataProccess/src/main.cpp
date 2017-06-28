@@ -22,7 +22,7 @@
 #define MAG_CONVERSION_XY (1)//(1100)
 #define MAG_CONVERSION_Z (1)//(980)
 #define GYRO_CONVERSION (1)
-#define TIME_CONVERSION (1)//(.001)
+#define TIME_CONVERSION (.001)
 
 
 //unit conversion constants
@@ -230,8 +230,8 @@ int main(int argc, char** argv)
     {
         return -1;
     }
-    cout << measurementSize << endl;
-    cout << headerSize << endl;
+    //cout << measurementSize << endl;
+    //cout << headerSize << endl;
     vector<Packet> packetList; //data of files once read in
     printColorLn("done", GREEN);
 
@@ -281,20 +281,15 @@ int main(int argc, char** argv)
 
     //decompress each packet, and pull the measure reads out
     printColor("Decompressing and compiling data...", YELLOW);
-    uint8_t decompressData[8000];
+    uint8_t decompressData[22000];
     vector< vector<uint8_t> > measurmentReads;
     for(int i = 0; i < packetList.size(); i++)
     {
         //decompress the current packet
         Packet currPacket = packetList[i];
         int decompressSize = currPacket[0] + 256*currPacket[1];
-        for(int j = 0; j < headerSize; j++)
-        {
-            cout << int(currPacket[j]) << endl;
-        }
         //cout << "Decompress Size: " << decompressSize << endl;
         int dataOut = blz_depack(currPacket.getArrayAt(headerSize), decompressData, decompressSize);
-        cout << dataOut << " " << decompressSize << " " << i << endl;
         if(dataOut != decompressSize)
         {
             printColorLn("decompression error", RED);
@@ -307,11 +302,6 @@ int main(int argc, char** argv)
             printColorLn("not mod 53", RED);
             return -1;
         }
-        for(int j = 0; j < 106; j++)
-        {
-            cout << int(decompressData[j]) << " ";
-        }
-        cout << endl;
         //cout << dataOut << endl;
 
         //iterate over the packet, pulling out each measure cyle into its own array
@@ -324,18 +314,10 @@ int main(int argc, char** argv)
             }
             size_t loc = 0;
             double check = getTime(currRead, loc);
-            cout << j << ": " << check  << '\t';
-            for(int k = 0; k < 3; k++)
-            {
-                cout << int(currRead[k]) << " ";
-            }
-            cout << endl;
             measurmentReads.push_back(currRead);
         }
-        cout << measurmentReads.size() << endl;
     }
     printColorLn("done", GREEN);
-    cout << measurmentReads.size() << endl;
 
     printColor("Organizing measurment reads chronologically...", YELLOW);
     qsort(measurmentReads, sortMeasurement);
