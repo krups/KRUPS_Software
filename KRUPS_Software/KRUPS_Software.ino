@@ -15,9 +15,9 @@
 #endif
 
 #define PWR_PIN (23) //pin to maintain power
-#define BUFFER_SIZE   (13000) //size of the measurement buffer about the max ammount of data that can be compressed to packet size
+#define BUFFER_SIZE   (6500) //size of the measurement buffer about the max ammount of data that can be compressed to packet size
 #define FLASH_PIN (0) //select pin for the flash chip
-#define TIME_TO_SPLASH_DOWN (180000) //Time until splash down routine begins in ms
+#define TIME_TO_SPLASH_DOWN (5*60*1000) //Time until splash down routine begins in ms
 #define WORKSPACESIZE ((1UL << 8)*8) //extra space for compression work
 #define MEASURE_READ (53) //size of all the bytes coming in form the sensors
 #define COMPRESS_BUFF_SIZE (2100) // size of buffer to hold compression data
@@ -141,23 +141,23 @@ void startSendingMessage(QueueList<Packet>& queue)
   uint16_t loc  = packet.getLength();
   packStats(packet);
   //attempt to send
-  int response = isbd.sendSBDBinary(packet.getArrayBase(), loc);
+  int response =  isbd.sendSBDBinary(packet.getArrayBase(), loc);
   //if it returns 0 message is sent
   if(response == 0)
   {
     queue.pop(); //remove message from the list
-    printPacket(packet, packet.getLength());
+    //printPacket(packet, packet.getLength());
   }
   else //if not we have an error
   {
     //print the error
-    /*
-    Serial.print("Error while sending packet: ");
-    Serial.println(response);
-    */
+    //Serial.print("Error while sending packet: ");
+    //Serial.println(response);
+
     
     sendAttemptErrors++;
     //don't remove from the queue
+    
   }
 }
 
@@ -205,6 +205,7 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
       if(compressLen > PACKET_MAX) //we need to roll back one measurement and make a packet
       {
         compressLen = blz_pack(buff, compressedData, priorloc - MEASURE_READ, workspace); //compress the data
+        
         double efficency = 100 - 100 * double(compressLen)/(priorloc - MEASURE_READ);  // measure the efficency of the compression
         Packet p = Packet(priorloc - MEASURE_READ, compressedData, compressLen); //pack the packet
         queue.push(p); //push into the current queue
@@ -384,8 +385,7 @@ void splashDown()
     Serial.println("%");
     */
   }
-
-/*
+  /*
   Serial.print("Total Packets: ");
   Serial.println(numRegular + numPriority);
   Serial.print("In queue: ");
@@ -412,10 +412,43 @@ bool ISBDCallback() {
       //loadFlashToQueue();
     }
 
-    //If we have gone for long enough turn off the teensy
-    if(millis() >= TIME_TO_SPLASH_DOWN + 60*1000)
+
+    if(Serial.available())
     {
-      digitalWrite(PWR_PIN, LOW);
+      String command = Serial.readString();
+      if(command == "OFF")
+      {
+
+      digitalWrite(13, HIGH);
+      delay(1000);
+      digitalWrite(13, LOW);
+      delay(1000);
+      digitalWrite(13, HIGH);
+      delay(1000);
+        
+       digitalWrite(PWR_PIN, LOW);
+      }
+      else if(command == "STATUS")
+      {
+          Serial.print("Total Packets: ");
+          Serial.println(numRegular + numPriority);
+          Serial.print("In queue: ");
+          Serial.println(message_queue.count());
+          Serial.print("In  priority_queue: ");
+          Serial.println(priority_queue.count());
+          Serial.print("Regular Location: ");
+          Serial.println(rloc);
+          Serial.print("Priority Location: ");
+          Serial.println(ploc);
+          Serial.print("Average R Compression: ");
+          Serial.println(uint8_t(avgCompressR/numRegular));
+          Serial.print("Average P Compression: ");
+          Serial.println(uint8_t(avgCompressP/numPriority));
+          Serial.print("Time Since Last R: ");
+          Serial.println(timeSinceR);
+          Serial.print("Time Since Last P: ");
+          Serial.println(timeSinceP);
+      }
     }
     
     return true;
@@ -423,22 +456,27 @@ bool ISBDCallback() {
 
 void setup() {
      //latch power
+     pinMode(13, OUTPUT);
      pinMode(PWR_PIN, OUTPUT);
      digitalWrite(PWR_PIN, HIGH);
+    digitalWrite(13, HIGH);
+    delay(250);
+    digitalWrite(13, LOW);
+    delay(250);
     
-    //Serial.begin(9600);
+    Serial.begin(9600);
     Serial1.begin(19200);
     //while(!Serial1);
     //sensors
     //Serial.println("Setting up");
     init_Sensors();
-    init_TC();
+    //init_TC();
     init_accel_interrupt(1.75, .1, 0x00);       // set for launch detection
     init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
 
     //iridium
-    //isbd.attachConsole(Serial);
-    //isbd.attachDiags(Serial);
+    isbd.attachConsole(Serial);
+    isbd.attachDiags(Serial);
     isbd.adjustSendReceiveTimeout(45);
     isbd.useMSSTMWorkaround(false);
     isbd.setPowerProfile(0);
@@ -457,6 +495,8 @@ void setup() {
         //Serial.println(err);
       }
     }while(!(err == 0)); //if err == 0 we successfully started up
+
+    digitalWrite(13, HIGH);
     
     //report starting up and time to start up
     //Serial.print("Started: ");
@@ -495,9 +535,56 @@ void loop() {
       inCallBack = false;
     }
 
-    //If we have gone for long enough turn off the teensy
-    if(millis() >= TIME_TO_SPLASH_DOWN + 60*1000)
+    if(Serial.available())
     {
+      String command = Serial.readString();
+      if(command == "OFF")
+      {
+
+      digitalWrite(13, HIGH);
+      delay(1000);
+      digitalWrite(13, LOW);
+      delay(1000);
+      digitalWrite(13, HIGH);
+      delay(1000);
+        
+       digitalWrite(PWR_PIN, LOW);
+      }
+      else if(command == "STATUS")
+      {
+          Serial.print("Total Packets: ");
+          Serial.println(numRegular + numPriority);
+          Serial.print("In queue: ");
+          Serial.println(message_queue.count());
+          Serial.print("In  priority_queue: ");
+          Serial.println(priority_queue.count());
+          Serial.print("Regular Location: ");
+          Serial.println(rloc);
+          Serial.print("Priority Location: ");
+          Serial.println(ploc);
+          Serial.print("Average R Compression: ");
+          Serial.println(uint8_t(avgCompressR/numRegular));
+          Serial.print("Average P Compression: ");
+          Serial.println(uint8_t(avgCompressP/numPriority));
+          Serial.print("Time Since Last R: ");
+          Serial.println(timeSinceR);
+          Serial.print("Time Since Last P: ");
+          Serial.println(timeSinceP);
+          if(splashDown)
+          {
+            Serial.println("Splash Down has occured");
+          }
+          else
+          {
+            Serial.println("Splash Down has not occured");
+          }
+      }
+    }
+
+    //If we have gone for long enough turn off the teensy
+    if(millis() >= (TIME_TO_SPLASH_DOWN + 60*1000) && message_queue.isEmpty() && priority_queue.isEmpty())
+    {
+      digitalWrite(13, LOW);
       digitalWrite(PWR_PIN, LOW);
     }
 }
