@@ -18,7 +18,7 @@
  CONSTRUCTOR
  ***************************************************************************/
 
-void Adafruit_LSM9DS1::initI2C(int32_t sensorID ) {
+void Adafruit_LSM9DS1::initI2C( int32_t sensorID ) {
     _i2c = true;
     _lsm9dso_sensorid_accel = sensorID + 1;
     _lsm9dso_sensorid_mag = sensorID + 2;
@@ -35,6 +35,7 @@ void Adafruit_LSM9DS1::initI2C(int32_t sensorID ) {
 Adafruit_LSM9DS1::Adafruit_LSM9DS1( int32_t sensorID ) {
     initI2C(sensorID);
 }
+
 
 Adafruit_LSM9DS1::Adafruit_LSM9DS1(int8_t xgcs, int8_t mcs, int32_t sensorID ) {
   _i2c = false;
@@ -73,7 +74,7 @@ Adafruit_LSM9DS1::Adafruit_LSM9DS1(int8_t sclk, int8_t smiso, int8_t smosi, int8
 bool Adafruit_LSM9DS1::begin()
 {
   if (_i2c) {
-    Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_EXT, 400000);
+    Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_400);
   } else if (_clk == -1) {
     // Hardware SPI
     pinMode(_csxg, OUTPUT);
@@ -136,6 +137,8 @@ bool Adafruit_LSM9DS1::begin()
   //write8(MAGTYPE, LSM9DS1_REGISTER_CTRL_REG1_M, 0xFC); // high perf XY, 80 Hz ODR
   write8(MAGTYPE, LSM9DS1_REGISTER_CTRL_REG3_M, 0x00); // continuous mode
   //write8(MAGTYPE, LSM9DS1_REGISTER_CTRL_REG4_M, 0x0C); // high perf Z mode
+
+
 
   // Set default ranges for the various sensors
   setupAccel(LSM9DS1_ACCELRANGE_2G);
