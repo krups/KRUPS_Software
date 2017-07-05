@@ -1,6 +1,6 @@
-SIZE=1934
-HEADER_SIZE=2
-PACKET_ORDER=4,1,3,0,0,0,0,0,0,0,0,0,0,0,0
+SIZE=1960
+HEADER_SIZE=13
+PACKET_ORDER=5,4,1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,
 
 
 
@@ -11,8 +11,9 @@ PACKET_ORDER=4,1,3,0,0,0,0,0,0,0,0,0,0,0,0
 //The second line tells the total number of bytes used in the packet by the header so it can be kept from the data
 //The third tells the order of measurment reads in the packet using the following key
 //KEY
-//TC = 0
+//TC or TempSensor = 0
 //LOACCEL = 1
 //HIACCEL = 2
 //MAG = 3
 //GYRO = 4
+//TIME = 5
