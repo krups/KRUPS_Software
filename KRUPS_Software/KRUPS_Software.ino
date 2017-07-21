@@ -85,6 +85,19 @@ void Read_gyrof(uint8_t *buf, size_t &loc)
 #endif
 
 /*
+ * Reads the pwr_pin and checks if a power off signal has been
+ */
+void checkPowerOffSignal()
+{
+  if(analogRead(PWR_PIN) == 1023)
+  {
+    while(analogRead(PWR_PIN) == 1023);
+    digitalWrite(13, LOW);
+    digitalWrite(PWR_PIN, LOW);
+  }
+}
+
+/*
 Grabs current time in millis and saves it as a three byte number
 in the buffer
 */
