@@ -24,8 +24,10 @@
 #include <SPI.h>
 #include <Adafruit_Sensor.h>
 
-#define LSM9DS1_ADDRESS_ACCELGYRO          (0x6B)
-#define LSM9DS1_ADDRESS_MAG                (0x1E)
+// #define LSM9DS1_ADDRESS_ACCELGYRO          (0x6B)
+// #define LSM9DS1_ADDRESS_MAG                (0x1E)
+#define LSM9DS1_ADDRESS_ACCELGYRO          (0x6A)
+#define LSM9DS1_ADDRESS_MAG                (0x1C)
 #define LSM9DS1_XG_ID                      (0b01101000)
 #define LSM9DS1_MAG_ID                     (0b00111101)
 
@@ -48,7 +50,8 @@
 #define LSM9DS1_GYRO_DPS_DIGIT_2000DPS     (0.07000F)
 
 // Temperature: LSB per degree celsius
-#define LSM9DS1_TEMP_LSB_DEGREE_CELSIUS    (8)  // 1°C = 8, 25° = 200, etc.
+#define LSM9DS1_TEMP_LSB_DEGREE_CELSIUS    (16)  // 1°C = 8, 25° = 200, etc.
+#define LSM9DS1_TEMP_OFFSET_DEGREE_CELSIUS (25)  // 0 output at given temperature
 
 #define MAGTYPE                           (true)
 #define XGTYPE                            (false)
@@ -182,7 +185,7 @@ class Adafruit_LSM9DS1
     lsm9ds1Vector_t accelData;    // Last read accelerometer data will be available here
     lsm9ds1Vector_t magData;      // Last read magnetometer data will be available here
     lsm9ds1Vector_t gyroData;     // Last read gyroscope data will be available here
-    int16_t         temperature;  // Last read temperzture data will be available here
+    int16_t         temperature;  // Last read temperature data will be available here
 
     bool    begin       ( void );
     void    read        ( void );

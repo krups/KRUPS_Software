@@ -1,4 +1,4 @@
-#include <Wire.h>
+#include <i2c_t3.h>
 #include <SPI.h>
 #include <Adafruit_LSM9DS1.h>
 #include <Adafruit_Sensor.h>  // not used in this demo but required!
@@ -62,12 +62,15 @@ void setup()
 
 void loop() 
 {
-  lsm.read();  /* ask it to read in the data */ 
+  delay(20);
+  lsm.read();  /* ask it to read in the data */
 
   /* Get a new sensor event */ 
   sensors_event_t a, m, g, temp;
 
   lsm.getEvent(&a, &m, &g, &temp); 
+
+  Serial.print("Temp: "); Serial.print(temp.temperature); Serial.println(" degree C");
 
   Serial.print("Accel X: "); Serial.print(a.acceleration.x); Serial.print(" m/s^2");
   Serial.print("\tY: "); Serial.print(a.acceleration.y);     Serial.print(" m/s^2 ");

@@ -95,7 +95,6 @@ bool Adafruit_LSM9DS1::begin()
     digitalWrite(_clk, HIGH);
   }
 
-
   // soft reset & reboot accel/gyro
   write8(XGTYPE, LSM9DS1_REGISTER_CTRL_REG8, 0x05);
   // soft reset & reboot magnetometer
@@ -528,7 +527,7 @@ void Adafruit_LSM9DS1::getTempEvent(sensors_event_t* event, uint32_t timestamp) 
   event->type      = SENSOR_TYPE_AMBIENT_TEMPERATURE;
   event->timestamp = timestamp;
   // This is just a guess since the staring point (21C here) isn't documented :(
-  event->temperature = 21.0 + (float)temperature/8;
+  event->temperature = LSM9DS1_TEMP_OFFSET_DEGREE_CELSIUS + (float)temperature / LSM9DS1_TEMP_LSB_DEGREE_CELSIUS;
   //event->temperature /= LSM9DS1_TEMP_LSB_DEGREE_CELSIUS;
 }
 
@@ -579,7 +578,7 @@ void Adafruit_LSM9DS1::getTempSensor(sensor_t* sensor) {
   sensor->sensor_id   = _lsm9dso_sensorid_temp;
   sensor->type        = SENSOR_TYPE_AMBIENT_TEMPERATURE;
   sensor->min_delay   = 0;
-  sensor->max_value   = 0.0;  // ToDo
-  sensor->min_value   = 0.0;  // ToDo
-  sensor->resolution  = 0.0;  // ToDo
+  sensor->max_value   = 85.0;
+  sensor->min_value   = -40.0;
+  sensor->resolution  = 0.0625;
 }
