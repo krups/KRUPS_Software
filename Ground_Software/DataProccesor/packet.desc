@@ -1,0 +1,19 @@
+SIZE=1960
+HEADER_SIZE=13
+PACKET_ORDER=5,4,1,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,
+
+
+
+//This file describes the packet so that it can be proccessed
+//and out put as a CSV file appropriately
+//only the first 3 lines are read by the program
+//The first line tells the total number of bytes in the packet (or the max possible if they are compressed)
+//The second line tells the total number of bytes used in the packet by the header so it can be kept from the data
+//The third tells the order of measurment reads in the packet using the following key
+//KEY
+//TC or TempSensor = 0
+//LOACCEL = 1
+//HIACCEL = 2
+//MAG = 3
+//GYRO = 4
+//TIME = 5

@@ -88,22 +88,35 @@ void Read_gyrof(uint8_t *buf, size_t &loc)
  */
  void GPS_Test_Mode()
  {
-  GPS_Mode = true;
+  GPS_Mode = true; //set flag to disable nonGPS actions in call back
+  digitalWrite(13, LOW);
+  delay(250);
+  digitalWrite(13,HIGH);
+  delay(250);
+  digitalWrite(13, LOW);
+  delay(250);
+  digitalWrite(13,HIGH);
+  delay(250);
+  isbd.sendSBDText("GPS Mode Activated"); //send an indicator message
+  //fill dummy packet
   size_t loc = 0;
   int16_t num = 0;
   while(loc < 1960)
   {
     append(compressedData, loc, num);
   }
+  //send until power off (also checks for power off in callback)
   while(true)
   {
     isbd.sendSBDBinary(compressedData, 1960);
+    checkPowerOffSignal();
+    delay(10*1000);
   }
  }
 
 
 /*
- * Reads the pwr_pin and checks if a power off signal has been
+ * Reads the pwr_pin and checks if a power off signal has been sent
  */
 void checkPowerOffSignal()
 {
