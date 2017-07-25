@@ -16,19 +16,18 @@
 #define NC  ("\033[0m")
 
 //conversion constants for the sensors
-#define TC_CONVERSION (1)
-#define LOACCEL_CONVERSION (1)//(.001)
+#define TC_CONVERSION (.25)
+#define LOACCEL_CONVERSION (.061F) // +/- 2 g
 #define HIACCEL_CONVERSION (1)
-#define MAG_CONVERSION_XY (1)//(1100)
-#define MAG_CONVERSION_Z (1)//(980)
-#define GYRO_CONVERSION (1)
+#define MAG_CONVERSION (.14F)  //+/- 4 gauss
+#define GYRO_CONVERSION (8.75F) //+/- 245 dps
 #define TIME_CONVERSION (.001)
 
 
 //unit conversion constants
-#define SENSORS_GRAVITY_STANDARD (1)//(9.80665F)                       /**< Earth's gravity in m/s^2 */
-#define SENSORS_GAUSS_TO_MICROTESLA  (1)//     (100)                   /**< Gauss to micro-Tesla multiplier */
-
+#define SENSORS_GRAVITY_STANDARD (9.80665F)      /**< Earth's gravity in m/s^2 */
+#define SENSORS_MILLIGAUSS_TO_MICROTESLA  (.1F)  /**< Gauss to micro-Tesla multiplier */
+#define MILLI_TO_BASE (.001F)
 
 using namespace std;
 
@@ -119,11 +118,17 @@ void CSVadd(ofstream& csv, float value)
     csv << value << ',';
 }
 
+
+int16_t twoBytesToInt(uint8_t loByte, uint8_t highByte)
+{
+	return (int16_t)(loByte | (highByte << 8));
+}
+
 float getTCReading(vector<uint8_t> data, size_t& loc)
 {
-    int rawData = data[loc] + 256*data[loc+1];
+    int16_t rawData = twoBytesToInt(data[loc], data[loc +1]);
     loc += 2;
-    float value = rawData * TC_CONVERSION;
+    float value = float(rawData) * TC_CONVERSION;
     return value;
 }
 
@@ -139,9 +144,9 @@ void getGyroReadings(vector<uint8_t> data, size_t& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
-        int rawData = data[loc] + 256*data[loc+1];
+        int16_t rawData = twoBytesToInt(data[loc], data[loc +1]);
         loc += 2;
-        readings[i] = (float)rawData * GYRO_CONVERSION;
+        readings[i] = float(rawData) * GYRO_CONVERSION * MILLI_TO_BASE;
     }
 }
 
@@ -149,7 +154,7 @@ void getHiAccelReadings(vector<uint8_t> data, size_t& loc, float* readings)
 {
     for(int i = 0; i < 3; i++)
     {
-        int rawData = data[loc] + 256*data[loc+1];
+        int16_t rawData = twoBytesToInt(data[loc], data[loc +1]);
         loc += 2;
         readings[i] = rawData * HIACCEL_CONVERSION;
     }
@@ -161,9 +166,9 @@ void getLoAccelReadings(vector<uint8_t> data, size_t& loc, float* readings)
     {
         uint8_t lo = data[loc];
         uint8_t hi = data[loc + 1];
-        int16_t rawData = (int16_t)((lo | (hi << 8)));
+        int16_t rawData = twoBytesToInt(lo, hi);
         loc += 2;
-        readings[i] = (float(rawData) * LOACCEL_CONVERSION); //* SENSORS_GRAVITY_STANDARD; //sets reading in m/s^2
+        readings[i] = float(rawData) * LOACCEL_CONVERSION * MILLI_TO_BASE * SENSORS_GRAVITY_STANDARD; //sets reading in m/s^2
     }
 }
 
@@ -173,17 +178,9 @@ void getMagReadings(vector<uint8_t> data, size_t& loc, float* readings)
     {
         uint8_t lo = data[loc];
         uint8_t hi = data[loc + 1];
-        int16_t rawData = (int16_t)(lo | (hi << 8));
+        int16_t rawData = rawData = twoBytesToInt(lo, hi);
         loc += 2;
-
-        if(i != 2)
-        {
-        	readings[i] = float(rawData) / MAG_CONVERSION_XY * SENSORS_GAUSS_TO_MICROTESLA;
-        }
-        else
-        {
-        	readings[i] = float(rawData) / MAG_CONVERSION_Z * SENSORS_GAUSS_TO_MICROTESLA;
-        }
+        readings[i] = float(rawData) * MAG_CONVERSION * SENSORS_MILLIGAUSS_TO_MICROTESLA;
     }
 }
 

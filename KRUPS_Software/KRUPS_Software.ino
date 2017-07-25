@@ -22,7 +22,7 @@
 #define MEASURE_READ (53) //size of all the bytes coming in form the sensors
 #define COMPRESS_BUFF_SIZE (2100) // size of buffer to hold compression data
 
-volatile bool launched = false, ejected = true, splash_down = false, data_resend_complete = false;
+volatile bool launched = false, ejected = true, splash_down = false, GPS_Mode = false;
 
 uint8_t priority_buf[BUFFER_SIZE]; // holds readings to be stored in priority packets
 size_t ploc = 0; //location in the buffer
@@ -83,6 +83,50 @@ void Read_gyrof(uint8_t *buf, size_t &loc)
     append(buf, loc, 3*t);
 }
 #endif
+/*
+ * GPS testing mode funciton to blast iridium at full pace
+ */
+ void GPS_Test_Mode()
+ {
+  GPS_Mode = true; //set flag to disable nonGPS actions in call back
+  digitalWrite(13, LOW);
+  delay(250);
+  digitalWrite(13,HIGH);
+  delay(250);
+  digitalWrite(13, LOW);
+  delay(250);
+  digitalWrite(13,HIGH);
+  delay(250);
+  isbd.sendSBDText("GPS Mode Activated"); //send an indicator message
+  //fill dummy packet
+  size_t loc = 0;
+  int16_t num = 0;
+  while(loc < 1960)
+  {
+    append(compressedData, loc, num);
+  }
+  //send until power off (also checks for power off in callback)
+  while(true)
+  {
+    isbd.sendSBDBinary(compressedData, 1960);
+    checkPowerOffSignal();
+    delay(10*1000);
+  }
+ }
+
+
+/*
+ * Reads the pwr_pin and checks if a power off signal has been sent
+ */
+void checkPowerOffSignal()
+{
+  if(analogRead(PWR_PIN) == 1023)
+  {
+    while(analogRead(PWR_PIN) == 1023);
+    digitalWrite(13, LOW);
+    digitalWrite(PWR_PIN, LOW);
+  }
+}
 
 /*
 Grabs current time in millis and saves it as a three byte number
@@ -403,13 +447,9 @@ bool ISBDCallback() {
       //Serial.println("Call Back");
       inCallBack = true;
     }
-    if(!splash_down) //if we haven't splashed down
+    if(!splash_down && !GPS_Mode) //if we haven't splashed down or we arent in GPS Mode
     {
           do_tasks(); //make sure we are still reading in measurements and building packets
-    }
-    else if(!data_resend_complete) // if we have splashed down retransmit data
-    {
-      //loadFlashToQueue();
     }
 
 
@@ -430,6 +470,12 @@ bool ISBDCallback() {
       }
       else if(command == "STATUS")
       {
+        if(GPS_Mode)
+        {
+          Serial.println("GPS Mode");
+        }
+        else
+        {
           Serial.print("Total Packets: ");
           Serial.println(numRegular + numPriority);
           Serial.print("In queue: ");
@@ -448,17 +494,29 @@ bool ISBDCallback() {
           Serial.println(timeSinceR);
           Serial.print("Time Since Last P: ");
           Serial.println(timeSinceP);
+          if(splash_down)
+          {
+            Serial.println("Splash Down has occured");
+          }
+          else
+          {
+            Serial.println("Splash Down has not occured");
+          }
+        }
       }
     }
+
+    checkPowerOffSignal();
     
     return true;
 }
 
 void setup() {
-     //latch power
-     pinMode(13, OUTPUT);
-     pinMode(PWR_PIN, OUTPUT);
-     digitalWrite(PWR_PIN, HIGH);
+    //latch power
+    int powerMode = analogRead(PWR_PIN);
+    pinMode(13, OUTPUT);
+    pinMode(PWR_PIN, OUTPUT);
+    digitalWrite(PWR_PIN, HIGH);
     digitalWrite(13, HIGH);
     delay(250);
     digitalWrite(13, LOW);
@@ -502,12 +560,11 @@ void setup() {
     //Serial.print("Started: ");
     //Serial.print(millis()/1000);
     //Serial.println(" s");
-    
-    /*
-    //flash chip
-    //SerialFlash.begin(FLASH_PIN);
-    Serial.println("Set up");
-    */
+
+    if(powerMode > 700 && powerMode < 850)
+    {
+      GPS_Test_Mode();
+    }
 }
 
 void loop() {
@@ -516,14 +573,6 @@ void loop() {
     {
       do_tasks(); //complete needed tasks for measurment
     }
-    //NOTE: This section of the code is reduntant and turns itself off as soon as it begins,
-    //can be used to handle anything that needs to handle post splashdown
-    else if(!data_resend_complete) // if we have splashed down retransmit data
-    {
-      //Serial.println("Resend");
-      data_resend_complete = true;
-    }
-
     if(!priority_queue.isEmpty()) //if there is priority data to send, do so
     {
       startSendingMessage(priority_queue); //send a message from the priority list
@@ -570,7 +619,7 @@ void loop() {
           Serial.println(timeSinceR);
           Serial.print("Time Since Last P: ");
           Serial.println(timeSinceP);
-          if(splashDown)
+          if(splash_down)
           {
             Serial.println("Splash Down has occured");
           }
@@ -582,9 +631,11 @@ void loop() {
     }
 
     //If we have gone for long enough turn off the teensy
-    if(millis() >= (TIME_TO_SPLASH_DOWN + 60*1000) && message_queue.isEmpty() && priority_queue.isEmpty())
+    if(splash_down && millis() >= (TIME_TO_SPLASH_DOWN + 60*1000) && message_queue.isEmpty() && priority_queue.isEmpty())
     {
       digitalWrite(13, LOW);
       digitalWrite(PWR_PIN, LOW);
     }
+  
+    checkPowerOffSignal();  
 }

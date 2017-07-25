@@ -9,7 +9,7 @@ OBJECTS = $(SOURCES:.c=.o)
 SOURCEDIR = ./src
 OBJECTDIR = ./objects
 OUTPUTDIR = ./bin
-PROGRAMNAME = KrupsDataProccessor
+PROGRAMNAME = Ground_Software
 OBJECT = $(addprefix $(OBJECTDIR)/,$(OBJECTS))
 
 $(PROGRAMNAME):$(OBJECT) $(SOURCEDIR)/main.cpp $(SOURCEDIR)/quicksort.cpp

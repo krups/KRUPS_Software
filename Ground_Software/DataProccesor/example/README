@@ -1,6 +1,6 @@
 The example can be executed from here by calling the following from the command line, after editing the
 first line of list.txt to match the directory you are currently in
 
-../bin/KrupsDataProccessor list.txt packet.desc out.csv
+../bin/Ground_Software list.txt packet.desc out.csv
 
 Will put the result into out.csv
