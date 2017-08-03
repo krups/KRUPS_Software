@@ -16,7 +16,6 @@
 #define PINSO		(12)
 #define CLK			(13)
 
-
 // initializes the Thermocouple converter and the associated multiplexors
 void init_TC(void) {
 	pinMode(PINEN, OUTPUT);
@@ -25,7 +24,6 @@ void init_TC(void) {
 	pinMode(PINCS1, OUTPUT);
 	pinMode(PINCS2, OUTPUT);
 	pinMode(PINCS3, OUTPUT);
-
 
 	digitalWrite(PINEN, HIGH);   		// enable on
 	digitalWrite(PINMUX0, LOW);     	// low, low = channel 1
@@ -66,10 +64,19 @@ int16_t spiread32(int PINCS) {
 	d = (d<<8) + SPI.transfer(0x00);
 	SPI.endTransaction(); digitalWrite(PINCS, HIGH);
 	if (d & 0x10000) {
-		d = 0xFFFFFFFF;
-		//if ( d & 0x0004 ) d = -999999;			// acknowledge short to VCC error
-		//else if ( d & 0x0002 ) d = -99999;		// acknowledge short to GND error
-		//else if ( d & 0x0001 ) d = -9999;			// acknowledge open circuit error
+		//d = 0xFFFFFFFF;
+		if ( d & 0x0004 ) {
+		d = -999999;			// acknowledge short to VCC error
+		Serial.print("SHORT to VCC ");
+		}
+		else if ( d & 0x0002 ){ 
+		d = -99999;		// acknowledge short to GND error
+				Serial.print("SHORT to GND ");
+			}
+		else if ( d & 0x0001 ){
+		 d = -9999;			// acknowledge open circuit error
+				Serial.print("OPEN circuit ");
+			}
 	}
 	//else d = (d >> 18) & 0x00000FFFF;				// shift and mask return value
 	return d >> 18;
@@ -93,8 +100,7 @@ void Read_TC(uint8_t *buf, size_t &loc) {
 	}
 }
 
-
-void Read_TC_atMUX(uint8_t *buf, size_t &loc)
+void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
 {
 	append(buf, loc, spiread32(PINCS1));
 	append(buf, loc, spiread32(PINCS2));

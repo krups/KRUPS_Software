@@ -7,6 +7,7 @@
 #include <Adafruit_BMP280.h>
 #include <Adafruit_L3GD20_U.h>
 #include <Adafruit_LSM303_U.h>
+#include <Adafruit_LSM9DS1.h>
 #include <compress.h>
 
 // Set correction values appropriately to zero sensors when in a
@@ -70,6 +71,16 @@ void init_Sensors(void) {
 	gyro.begin(GYRO_RANGE_2000DPS);
 	accel.begin();
 	mag.begin();
+}
+
+//LSM Version
+// initialize the sensors using adafruit unified driver
+void initSensors(void)
+{
+    sense.begin();
+    sense.setupAccel(sense.LSM9DS1_ACCELRANGE_16G);
+    sense.setupMag(sense.LSM9DS1_MAGGAIN_16GAUSS);
+    sense.setupGyro(sense.LSM9DS1_GYROSCALE_2000DPS);
 }
 
 // initialize interrupts for LSM303 on interrupt1 with given threshold in G
@@ -152,7 +163,7 @@ void readMag(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
     sense.readMag();
     append(buf, loc, sense.magData.x + magXcorr);
     append(buf, loc, sense.magData.y + magYcorr);
-    appedn(buf, loc, sense.magData.z + magZcorr);
+    append(buf, loc, sense.magData.z + magZcorr);
 }
 
 void readTemp(uint8_t *buf, size_t &loc) {
