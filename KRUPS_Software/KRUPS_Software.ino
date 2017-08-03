@@ -217,11 +217,10 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
     priorloc = loc;
     //read in sensor data
     save_time(buff, loc);        // 3 bytes
-    Read_gyro(buff, loc);        // 6 bytes
-    Read_loaccel(buff, loc);     // 6 bytes
+    //readGyro(buff, loc);        // 6 bytes
+    //readAccel(buff, loc);   //lo acccel  // 6 bytes
     Read_hiaccel(buff, loc);     // 6 bytes
-    Read_mag(buff, loc);         // 6 bytes
-    Read_temp(buff, loc);        // 2 bytes
+    //readMag(buff, loc);         // 6 bytes
     static elapsedMillis timeUsed;
     //loop over the mux posistions and read the TC's
    for(int i = 0; i < 4; i++)
@@ -526,11 +525,15 @@ void setup() {
     Serial1.begin(19200);
     //while(!Serial1);
     //sensors
-    //Serial.println("Setting up");
-    init_Sensors();
-    //init_TC();
-    init_accel_interrupt(1.75, .1, 0x00);       // set for launch detection
-    init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
+    Serial.println("Setting up");
+    //initSensors();
+        Serial.println("Setting up");
+
+    init_TC();
+        Serial.println("Setting up");
+
+    //init_accel_interrupt(1.75, .1, 0x00);       // set for launch detection
+    //init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
 
     //iridium
     isbd.attachConsole(Serial);

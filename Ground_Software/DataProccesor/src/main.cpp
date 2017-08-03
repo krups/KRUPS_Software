@@ -17,10 +17,10 @@
 
 //conversion constants for the sensors
 #define TC_CONVERSION (.25)
-#define LOACCEL_CONVERSION (.061F) // +/- 2 g
+#define LOACCEL_CONVERSION (0.732F) // +/- 2 g
 #define HIACCEL_CONVERSION (1)
-#define MAG_CONVERSION (.14F)  //+/- 4 gauss
-#define GYRO_CONVERSION (8.75F) //+/- 245 dps
+#define MAG_CONVERSION (0.58F)  //+/- 4 gauss
+#define GYRO_CONVERSION (0.07000F) //+/- 245 dps
 #define TIME_CONVERSION (.001)
 
 
@@ -146,7 +146,7 @@ void getGyroReadings(vector<uint8_t> data, size_t& loc, float* readings)
     {
         int16_t rawData = twoBytesToInt(data[loc], data[loc +1]);
         loc += 2;
-        readings[i] = float(rawData) * GYRO_CONVERSION * MILLI_TO_BASE;
+        readings[i] = float(rawData) * GYRO_CONVERSION; //* MILLI_TO_BASE;
     }
 }
 
@@ -158,6 +158,14 @@ void getHiAccelReadings(vector<uint8_t> data, size_t& loc, float* readings)
         loc += 2;
         readings[i] = rawData * HIACCEL_CONVERSION;
     }
+}
+
+float getTempReading(vector<uint8_t> data, size_t& loc)
+{
+    int16_t rawData = twoBytesToInt(data[loc], data[loc +1]);
+    loc += 2;
+    float value = float(rawData) * TC_CONVERSION;
+    return value;
 }
 
 void getLoAccelReadings(vector<uint8_t> data, size_t& loc, float* readings)
@@ -178,11 +186,12 @@ void getMagReadings(vector<uint8_t> data, size_t& loc, float* readings)
     {
         uint8_t lo = data[loc];
         uint8_t hi = data[loc + 1];
-        int16_t rawData = rawData = twoBytesToInt(lo, hi);
+        int16_t rawData = twoBytesToInt(lo, hi);
         loc += 2;
-        readings[i] = float(rawData) * MAG_CONVERSION * SENSORS_MILLIGAUSS_TO_MICROTESLA;
+        readings[i] = float(rawData) * MAG_CONVERSION * MILLI_TO_BASE;// * SENSORS_MILLIGAUSS_TO_MICROTESLA;
     }
 }
+
 
 bool sortMeasurement(vector<uint8_t> a, vector<uint8_t> b)
 {
