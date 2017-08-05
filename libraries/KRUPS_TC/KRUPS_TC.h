@@ -5,6 +5,9 @@
 #include <compress.h>
 #include <SPI.h>
 
+#define HARDWARE_SPI (false)
+
+
 #define DEBUG		(0)
 
 #define PINEN		(5)
@@ -52,7 +55,7 @@ void setMUX(int j) {
 		break;
 	}
 }
-
+#if HARDWARE_SPI
 // read the output of the thermocouple converter and return the value
 // returns all ones (-.25 C) if an error was detected
 int16_t spiread32(int PINCS) {
@@ -81,7 +84,7 @@ int16_t spiread32(int PINCS) {
 	//else d = (d >> 18) & 0x00000FFFF;				// shift and mask return value
 	return d >> 18;
 }
-
+#else
 int16_t spiread32(int PINCS) {
     int d = 0;
     digitalWriteFast(PINCS, LOW);
@@ -108,6 +111,7 @@ int16_t spiread32(int PINCS) {
   digitalWriteFast(PINCS, HIGH);
   return d;
 }
+#endif
 
 // reads all thermocouples and appends the values to the input buffer
 // and moves the location pointer appropriately, requires 16 free bytes in buf
