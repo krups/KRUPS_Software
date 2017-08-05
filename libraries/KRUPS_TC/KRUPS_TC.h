@@ -67,15 +67,15 @@ int16_t spiread32(int PINCS) {
 		//d = 0xFFFFFFFF;
 		if ( d & 0x0004 ) {
 		d = -999999;			// acknowledge short to VCC error
-		Serial.print("SHORT to VCC ");
+		//Serial.print("SHORT to VCC ");
 		}
 		else if ( d & 0x0002 ){ 
 		d = -99999;		// acknowledge short to GND error
-				Serial.print("SHORT to GND ");
+				//Serial.print("SHORT to GND ");
 			}
 		else if ( d & 0x0001 ){
 		 d = -9999;			// acknowledge open circuit error
-				Serial.print("OPEN circuit ");
+				//Serial.print("OPEN circuit ");
 			}
 	}
 	//else d = (d >> 18) & 0x00000FFFF;				// shift and mask return value
@@ -102,9 +102,19 @@ void Read_TC(uint8_t *buf, size_t &loc) {
 
 void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
 {
-	append(buf, loc, spiread32(PINCS1));
-	append(buf, loc, spiread32(PINCS2));
-	append(buf, loc, spiread32(PINCS3));
+	int16_t one = spiread32(PINCS1);
+	int16_t two = spiread32(PINCS2);
+	int16_t three = spiread32(PINCS3);
+	
+	Serial.print(float(one) *.25);
+	Serial.print("\t");
+	Serial.print (float(two)* .25);
+	Serial.print("\t");
+	Serial.println(float(three) * .25);
+	
+	append(buf, loc, one);
+	append(buf, loc, two);
+	append(buf, loc, three);
 }
 
 #endif

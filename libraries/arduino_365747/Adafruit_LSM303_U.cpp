@@ -18,7 +18,7 @@
  #include "WProgram.h"
 #endif
 
-#include <Wire.h>
+#include <i2c_t3.h>
 
 #include <limits.h>
 
@@ -108,7 +108,7 @@ Adafruit_LSM303_Accel_Unified::Adafruit_LSM303_Accel_Unified(int32_t sensorID) {
 bool Adafruit_LSM303_Accel_Unified::begin()
 {
   // Enable I2C
-  Wire.begin();
+  Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_400);
 
   // Enable the accelerometer (100Hz)
   write8(LSM303_ADDRESS_ACCEL, LSM303_REGISTER_ACCEL_CTRL_REG1_A, 0x57);
@@ -249,7 +249,7 @@ Adafruit_LSM303_Mag_Unified::Adafruit_LSM303_Mag_Unified(int32_t sensorID) {
 bool Adafruit_LSM303_Mag_Unified::begin()
 {
   // Enable I2C
-  Wire.begin();
+  Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, I2C_RATE_400);
 
   // Enable the magnetometer
   write8(LSM303_ADDRESS_MAG, LSM303_REGISTER_MAG_MR_REG_M, 0x00);

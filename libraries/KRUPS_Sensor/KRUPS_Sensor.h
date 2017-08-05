@@ -41,7 +41,7 @@ void gyro_int(void);
 Adafruit_L3GD20_Unified gyro;
 Adafruit_LSM303_Accel_Unified accel;
 Adafruit_LSM303_Mag_Unified mag;
-Adafruit_LSM9DS1 sense;
+Adafruit_LSM9DS1 sense;// = Adafruit_LSM9DS1();
 sensors_event_t gyro_event, accel_event, mag_event;
 
 void write8(byte address, byte reg, byte value)

@@ -50,8 +50,8 @@
 #define LSM9DS1_GYRO_DPS_DIGIT_2000DPS     (0.07000F)
 
 // Temperature: LSB per degree celsius
-#define LSM9DS1_TEMP_LSB_DEGREE_CELSIUS    (16)  // 1°C = 8, 25° = 200, etc.
-#define LSM9DS1_TEMP_OFFSET_DEGREE_CELSIUS (25)  // 0 output at given temperature
+#define LSM9DS1_TEMP_LSB_DEGREE_CELSIUS    (16.0F)  // 1°C = 8, 25° = 200, etc.
+#define LSM9DS1_TEMP_OFFSET_DEGREE_CELSIUS (10.5F)  // 0 output at given temperature
 
 #define MAGTYPE                           (true)
 #define XGTYPE                            (false)

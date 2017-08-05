@@ -329,7 +329,8 @@ int main(int argc, char** argv)
             check = getTime(currRead, loc);
             measurmentReads.push_back(currRead);
         }
-        //            cout << check <<  endl;
+        //
+        //cout << check <<  endl;
         //cout << i << endl;
     }
     printColorLn("done", GREEN);

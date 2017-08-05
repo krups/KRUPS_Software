@@ -237,6 +237,9 @@ void Adafruit_LSM9DS1::readTemp() {
        2, buffer);
   uint8_t xlo = buffer[0];
   int16_t xhi = buffer[1];
+  Serial.print(xlo);
+  Serial.print(" : ");
+  Serial.println(xhi);
 
   xhi <<= 8; xhi |= xlo;
 
@@ -527,7 +530,8 @@ void Adafruit_LSM9DS1::getTempEvent(sensors_event_t* event, uint32_t timestamp) 
   event->type      = SENSOR_TYPE_AMBIENT_TEMPERATURE;
   event->timestamp = timestamp;
   // This is just a guess since the staring point (21C here) isn't documented :(
-  event->temperature = LSM9DS1_TEMP_OFFSET_DEGREE_CELSIUS + (float)temperature / LSM9DS1_TEMP_LSB_DEGREE_CELSIUS;
+  Serial.println(temperature);
+  event->temperature = LSM9DS1_TEMP_OFFSET_DEGREE_CELSIUS + ((float)temperature) / LSM9DS1_TEMP_LSB_DEGREE_CELSIUS;
   //event->temperature /= LSM9DS1_TEMP_LSB_DEGREE_CELSIUS;
 }
 

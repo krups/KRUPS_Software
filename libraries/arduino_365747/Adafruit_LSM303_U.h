@@ -22,7 +22,7 @@
 #endif
 
 #include <Adafruit_Sensor.h>
-#include <Wire.h>
+#include <i2c_t3.h>
 
 
 /*=========================================================================
