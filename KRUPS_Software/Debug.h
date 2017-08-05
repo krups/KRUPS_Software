@@ -108,4 +108,30 @@ void init_TC() {
 void init_accel_interrupt(float a, float b, int c) {}
 void init_gyro_interrupt(int a, int b, int c) {}
 
+void initSensors() {}
+
+void readGyro(uint8_t *buf, size_t &loc)
+{
+    int t = int(millis()/1000);
+    append(buf, loc, t);
+    append(buf, loc, 2*t);
+    append(buf, loc, 3*t);
+}
+
+void readAccel(uint8_t *buf, size_t &loc)
+{
+    int t = int(millis()/1000);
+    append(buf, loc, t*t);
+    append(buf, loc, 2*t*t);
+    append(buf, loc, 3*t*t);
+}
+
+void readMag(uint8_t *buf, size_t &loc)
+{
+    append(buf, loc, 7);
+    append(buf, loc, 5);
+    append(buf, loc, 3);
+}
+
+
 #endif

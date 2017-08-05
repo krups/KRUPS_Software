@@ -18,14 +18,16 @@
 //conversion constants for the sensors
 #define TC_CONVERSION (.25)
 #define LOACCEL_CONVERSION (0.732F) // +/- 2 g
-#define HIACCEL_CONVERSION (1)
+#define HIACCEL_CONVERSION_MULTIPLIER (400.0F)
+#define HIACCEL_CONVERSION_DIVISOR (4095.0F)
+#define HIACCEL_ZERO_SHIFT (-200.0F)
 #define MAG_CONVERSION (0.58F)  //+/- 4 gauss
 #define GYRO_CONVERSION (0.07000F) //+/- 245 dps
 #define TIME_CONVERSION (.001)
 
 
 //unit conversion constants
-#define SENSORS_GRAVITY_STANDARD (9.80665F)      /**< Earth's gravity in m/s^2 */
+#define SENSORS_GRAVITY_STANDARD  (1)//(9.80665F)      /**< Earth's gravity in m/s^2 */
 #define SENSORS_MILLIGAUSS_TO_MICROTESLA  (.1F)  /**< Gauss to micro-Tesla multiplier */
 #define MILLI_TO_BASE (.001F)
 
@@ -126,6 +128,7 @@ int16_t twoBytesToInt(uint8_t loByte, uint8_t highByte)
 
 float getTCReading(vector<uint8_t> data, size_t& loc)
 {
+    //cout << int(data[loc]) << " " << int(data[loc + 1]) << endl;
     int16_t rawData = twoBytesToInt(data[loc], data[loc +1]);
     loc += 2;
     float value = float(rawData) * TC_CONVERSION;
@@ -156,7 +159,10 @@ void getHiAccelReadings(vector<uint8_t> data, size_t& loc, float* readings)
     {
         int16_t rawData = twoBytesToInt(data[loc], data[loc +1]);
         loc += 2;
-        readings[i] = rawData * HIACCEL_CONVERSION;
+        //cout << rawData << endl;
+        //cout << HIACCEL_CONVERSION_MULTIPLIER << " " << HIACCEL_CONVERSION_DIVISOR << " " << HIACCEL_ZERO_SHIFT << endl;
+        readings[i] = ((float(rawData) * HIACCEL_CONVERSION_MULTIPLIER)/HIACCEL_CONVERSION_DIVISOR) + HIACCEL_ZERO_SHIFT;
+        //cout << readings[i] << endl;
     }
 }
 
@@ -236,7 +242,7 @@ int main(int argc, char** argv)
     {
         return -1;
     }
-    //cout << measurementSize << endl;
+    cout << measurementSize << endl;
     //cout << headerSize << endl;
     vector<Packet> packetList; //data of files once read in
     printColorLn("done", GREEN);
@@ -291,11 +297,13 @@ int main(int argc, char** argv)
     vector< vector<uint8_t> > measurmentReads;
     for(int i = 0; i < packetList.size(); i++)
     {
+        double check;
         //decompress the current packet
         Packet currPacket = packetList[i];
         int decompressSize = currPacket[0] + 256*currPacket[1];
-        //cout << "Decompress Size: " << decompressSize << endl;
+        cout << "Decompress Size: " << decompressSize << endl;
         int dataOut = blz_depack(currPacket.getArrayAt(headerSize), decompressData, decompressSize);
+        cout << dataOut << endl;
         if(dataOut != decompressSize)
         {
             printColorLn("decompression error", RED);
@@ -303,12 +311,11 @@ int main(int argc, char** argv)
             return -1;
         }
 
-        if(dataOut % 53 != 0)
+        if(dataOut % measurementSize != 0)
         {
-            printColorLn("not mod 53", RED);
-            return -1;
+            printColorLn("not mod measure size", RED);
+            //return -1;
         }
-        //cout << dataOut << endl;
 
         //iterate over the packet, pulling out each measure cyle into its own array
         for(int j = 0; j < decompressSize; j += measurementSize)
@@ -319,9 +326,11 @@ int main(int argc, char** argv)
                 currRead.push_back(decompressData[j+k]);
             }
             size_t loc = 0;
-            double check = getTime(currRead, loc);
+            check = getTime(currRead, loc);
             measurmentReads.push_back(currRead);
         }
+        //            cout << check <<  endl;
+        //cout << i << endl;
     }
     printColorLn("done", GREEN);
 
@@ -407,6 +416,7 @@ int main(int argc, char** argv)
                     getHiAccelReadings(currRead, loc, readings);
                     for(int k = 0; k < 3; k++)
                     {
+                        //cout << readings[k] << endl;
                         CSVadd(commaList, readings[k]);
                     }
                     break;

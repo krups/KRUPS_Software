@@ -6,21 +6,30 @@
 #include "Packet.h"
 //#include <SerialFlash.h>
 
-#define TEST (true) //decides to use real or fake functions to allow testing
+#define TEST (false) //decides to use real or fake functions to allow testing
 #if TEST
 #include "Debug.h"
 #else
 #include <KRUPS_TC.h>
-#include <KRUPS_Sensor.h>
+//#include <KRUPS_Sensor.h>
 #endif
 
 #define PWR_PIN (23) //pin to maintain power
-#define BUFFER_SIZE   (6500) //size of the measurement buffer about the max ammount of data that can be compressed to packet size
+#define BUFFER_SIZE   (8000) //size of the measurement buffer about the max ammount of data that can be compressed to packet size
 #define FLASH_PIN (0) //select pin for the flash chip
-#define TIME_TO_SPLASH_DOWN (5*60*1000) //Time until splash down routine begins in ms
+#define TIME_TO_SPLASH_DOWN (15*60*1000) //Time until splash down routine begins in ms
 #define WORKSPACESIZE ((1UL << 8)*8) //extra space for compression work
-#define MEASURE_READ (53) //size of all the bytes coming in form the sensors
+#define MEASURE_READ (33) //size of all the bytes coming in form the sensors
 #define COMPRESS_BUFF_SIZE (2100) // size of buffer to hold compression data
+
+#define ADXL377x    (17)
+#define ADXL377y    (16)
+#define ADXL377z    (14)
+
+#define hiXcorr     (0)
+#define hiYcorr     (0)
+#define hiZcorr     (0)
+
 
 volatile bool launched = false, ejected = true, splash_down = false, GPS_Mode = false;
 
@@ -83,19 +92,33 @@ void Read_gyrof(uint8_t *buf, size_t &loc)
     append(buf, loc, 3*t);
 }
 #endif
+
+
+// Reads all axis of the ADXL377 accel and appends the values to
+// the end of the input buffer, and moves the location pointer accordingly
+void Read_hiaccel(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
+  int16_t xval, yval, zval;
+  xval = analogRead(ADXL377x);
+  yval = analogRead(ADXL377y);
+  zval = analogRead(ADXL377z);
+  append(buf, loc, xval + hiXcorr);
+  append(buf, loc, yval + hiYcorr);
+  append(buf, loc, zval + hiZcorr);
+}
+
 /*
  * GPS testing mode funciton to blast iridium at full pace
  */
  void GPS_Test_Mode()
  {
   GPS_Mode = true; //set flag to disable nonGPS actions in call back
-  digitalWrite(13, LOW);
+  //digitalWrite(13, LOW);
   delay(250);
-  digitalWrite(13,HIGH);
+  //digitalWrite(13,HIGH);
   delay(250);
-  digitalWrite(13, LOW);
+  //digitalWrite(13, LOW);
   delay(250);
-  digitalWrite(13,HIGH);
+  //digitalWrite(13,HIGH);
   delay(250);
   isbd.sendSBDText("GPS Mode Activated"); //send an indicator message
   //fill dummy packet
@@ -120,10 +143,10 @@ void Read_gyrof(uint8_t *buf, size_t &loc)
  */
 void checkPowerOffSignal()
 {
-  if(analogRead(PWR_PIN) == 1023)
+  if(analogRead(PWR_PIN) == 4095)
   {
-    while(analogRead(PWR_PIN) == 1023);
-    digitalWrite(13, LOW);
+    while(analogRead(PWR_PIN) == 4095);
+    //digitalWrite(13, LOW);
     digitalWrite(PWR_PIN, LOW);
   }
 }
@@ -239,13 +262,13 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
         //compress the current packet
         compressLen = blz_pack(buff, compressedData, priorloc, workspace);
         
-        //Serial.print("Compressing: ");
-        //Serial.println(priorloc);
-        //Serial.print("To: ");
-        //Serial.println(compressLen);
+        Serial.print("Compressing: ");
+        Serial.println(priorloc);
+        Serial.print("To: ");
+        Serial.println(compressLen);
       }
       //if the data compresses to more then fits in a packet we need to pacck a packet
-      if(compressLen > PACKET_MAX) //we need to roll back one measurement and make a packet
+      if(compressLen > PACKET_MAX || loc > BUFFER_SIZE*.95 ) //we need to roll back one measurement and make a packet
       {
         compressLen = blz_pack(buff, compressedData, priorloc - MEASURE_READ, workspace); //compress the data
         
@@ -276,26 +299,26 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
           numRegular++;
         }
         
-        //Serial.println("PACKET READY");
-        //Serial.print(priorloc - MEASURE_READ);
-        //Serial.print(" compressed to ");
-        //Serial.println(compressLen);
-        //Serial.print(100 - 100 * double(compressLen)/(priorloc - MEASURE_READ));
-        //Serial.println("%");
-        //Serial.print("Unused Space: ");
-        //Serial.println(1960 - p.getLength());
-        //Serial.println("Packet added");
-        //Serial.println(p.getLength());
-        //Serial.print("Total Packets: ");
-        //Serial.println(numPriority + numRegular);
-        //Serial.print("In  priority_queue: ");
-        //Serial.println(priority_queue.count());
-        //Serial.print("In queue: ");
-        //Serial.println(message_queue.count());
-        //Serial.println("Copying data to front");
-        //Serial.print("Time since last packet: ");
-        //Serial.println(timeSinceP);
-        //Serial.println(timeSinceR);
+        Serial.println("PACKET READY");
+        Serial.print(priorloc - MEASURE_READ);
+        Serial.print(" compressed to ");
+        Serial.println(compressLen);
+        Serial.print(100 - 100 * double(compressLen)/(priorloc - MEASURE_READ));
+        Serial.println("%");
+        Serial.print("Unused Space: ");
+        Serial.println(1960 - p.getLength());
+        Serial.println("Packet added");
+        Serial.println(p.getLength());
+        Serial.print("Total Packets: ");
+        Serial.println(numPriority + numRegular);
+        Serial.print("In  priority_queue: ");
+        Serial.println(priority_queue.count());
+        Serial.print("In queue: ");
+        Serial.println(message_queue.count());
+        Serial.println("Copying data to front");
+        Serial.print("Time since last packet: ");
+        Serial.println(timeSinceP);
+        Serial.println(timeSinceR);
       }
     }
     if(timeUsed > 4)
@@ -458,11 +481,11 @@ bool ISBDCallback() {
       if(command == "OFF")
       {
 
-      digitalWrite(13, HIGH);
+      //digitalWrite(13, HIGH);
       delay(1000);
-      digitalWrite(13, LOW);
+      //digitalWrite(13, LOW);
       delay(1000);
-      digitalWrite(13, HIGH);
+      //digitalWrite(13, HIGH);
       delay(1000);
         
        digitalWrite(PWR_PIN, LOW);
@@ -512,25 +535,25 @@ bool ISBDCallback() {
 
 void setup() {
     //latch power
+    analogReadRes(12);
     int powerMode = analogRead(PWR_PIN);
     pinMode(13, OUTPUT);
     pinMode(PWR_PIN, OUTPUT);
     digitalWrite(PWR_PIN, HIGH);
-    digitalWrite(13, HIGH);
+    //digitalWrite(13, HIGH);
     delay(250);
-    digitalWrite(13, LOW);
+    //digitalWrite(13, LOW);
     delay(250);
     
     Serial.begin(9600);
     Serial1.begin(19200);
     //while(!Serial1);
     //sensors
-    Serial.println("Setting up");
+    //Serial.println("Setting up");
     //initSensors();
-        Serial.println("Setting up");
-
+    //Serial.println("Setting up");
     init_TC();
-        Serial.println("Setting up");
+    //Serial.println("Setting up");
 
     //init_accel_interrupt(1.75, .1, 0x00);       // set for launch detection
     //init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
@@ -557,21 +580,26 @@ void setup() {
       }
     }while(!(err == 0)); //if err == 0 we successfully started up
 
-    digitalWrite(13, HIGH);
+    //digitalWrite(13, HIGH);
+    Serial.println("CONNECTED");
     
     //report starting up and time to start up
     //Serial.print("Started: ");
     //Serial.print(millis()/1000);
     //Serial.println(" s");
 
-    if(powerMode > 700 && powerMode < 850)
+    if(powerMode > 3000 && powerMode < 3250)
     {
       GPS_Test_Mode();
     }
+
+   //digitalWrite(13, HIGH);
+
 }
 
 void loop() {
     //after ejection before splash_down routine
+    //digitalWrite(13, HIGH);
     if(!splash_down)
     {
       do_tasks(); //complete needed tasks for measurment
@@ -593,11 +621,11 @@ void loop() {
       if(command == "OFF")
       {
 
-      digitalWrite(13, HIGH);
+      //digitalWrite(13, HIGH);
       delay(1000);
-      digitalWrite(13, LOW);
+      //digitalWrite(13, LOW);
       delay(1000);
-      digitalWrite(13, HIGH);
+      //digitalWrite(13, HIGH);
       delay(1000);
         
        digitalWrite(PWR_PIN, LOW);
@@ -636,7 +664,8 @@ void loop() {
     //If we have gone for long enough turn off the teensy
     if(splash_down && millis() >= (TIME_TO_SPLASH_DOWN + 60*1000) && message_queue.isEmpty() && priority_queue.isEmpty())
     {
-      digitalWrite(13, LOW);
+      isbd.sendSBDText("Tweezers");
+      //digitalWrite(13, LOW);
       digitalWrite(PWR_PIN, LOW);
     }
   
