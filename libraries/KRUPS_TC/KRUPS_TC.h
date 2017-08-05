@@ -69,17 +69,44 @@ int16_t spiread32(int PINCS) {
 		d = -999999;			// acknowledge short to VCC error
 		//Serial.print("SHORT to VCC ");
 		}
-		else if ( d & 0x0002 ){ 
+		else if ( d & 0x0002 ) {
 		d = -99999;		// acknowledge short to GND error
 				//Serial.print("SHORT to GND ");
 			}
-		else if ( d & 0x0001 ){
+		else if ( d & 0x0001 ) {
 		 d = -9999;			// acknowledge open circuit error
 				//Serial.print("OPEN circuit ");
 			}
 	}
 	//else d = (d >> 18) & 0x00000FFFF;				// shift and mask return value
 	return d >> 18;
+}
+
+int16_t spiread32(int PINCS) {
+    int d = 0;
+    digitalWriteFast(PINCS, LOW);
+
+    //d += 0xC0000000;
+    for (int i=31; i>=0; i--) {
+        digitalWriteFast(CLK, LOW);
+
+        d <<= 1;
+        if (digitalRead(PINSO)) {
+            d |= 1;
+            //Serial.print("1");
+        }
+        //else Serial.print("0");
+        digitalWriteFast(CLK, HIGH);
+    }
+    if (d & 0x10000) {
+        if ( d & 0x0004 ) d = -999999;
+        else if ( d & 0x0002 ) d = -99999;
+        else if ( d & 0x0001 ) d = -9999;
+    }
+    else d >>= 18;
+
+  digitalWriteFast(PINCS, HIGH);
+  return d;
 }
 
 // reads all thermocouples and appends the values to the input buffer
@@ -105,13 +132,13 @@ void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
 	int16_t one = spiread32(PINCS1);
 	int16_t two = spiread32(PINCS2);
 	int16_t three = spiread32(PINCS3);
-	
+
 	Serial.print(float(one) *.25);
 	Serial.print("\t");
 	Serial.print (float(two)* .25);
 	Serial.print("\t");
 	Serial.println(float(three) * .25);
-	
+
 	append(buf, loc, one);
 	append(buf, loc, two);
 	append(buf, loc, three);
