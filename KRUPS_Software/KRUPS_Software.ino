@@ -540,9 +540,9 @@ void setup() {
     pinMode(13, OUTPUT);
     pinMode(PWR_PIN, OUTPUT);
     digitalWrite(PWR_PIN, HIGH);
-    //digitalWrite(13, HIGH);
+    digitalWrite(13, HIGH);
     delay(250);
-    //digitalWrite(13, LOW);
+    digitalWrite(13, LOW);
     delay(250);
     
     Serial.begin(9600);
