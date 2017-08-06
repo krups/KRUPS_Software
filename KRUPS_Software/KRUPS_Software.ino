@@ -143,7 +143,7 @@ void Read_hiaccel(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
  */
 void checkPowerOffSignal()
 {
-  if(analogRead(PWR_PIN) == 4095)
+  if(analogRead(PWR_PIN) == 4095 && millis() > 20 * 1000)
   {
     while(analogRead(PWR_PIN) == 4095);
     //digitalWrite(13, LOW);
