@@ -242,7 +242,7 @@ int main(int argc, char** argv)
     {
         return -1;
     }
-    cout << measurementSize << endl;
+    //cout << measurementSize << endl;
     //cout << headerSize << endl;
     vector<Packet> packetList; //data of files once read in
     printColorLn("done", GREEN);
@@ -292,7 +292,7 @@ int main(int argc, char** argv)
     fileList.close();
 
     //decompress each packet, and pull the measure reads out
-    printColor("Decompressing and compiling data...", YELLOW);
+    printColorLn("Decompressing and compiling data...", YELLOW);
     uint8_t decompressData[22000];
     vector< vector<uint8_t> > measurmentReads;
     for(int i = 0; i < packetList.size(); i++)
@@ -303,7 +303,7 @@ int main(int argc, char** argv)
         int decompressSize = currPacket[0] + 256*currPacket[1];
         cout << "Decompress Size: " << decompressSize << endl;
         int dataOut = blz_depack(currPacket.getArrayAt(headerSize), decompressData, decompressSize);
-        cout << dataOut << endl;
+        //cout << dataOut << endl;
         if(dataOut != decompressSize)
         {
             printColorLn("decompression error", RED);
