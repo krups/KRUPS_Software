@@ -3,36 +3,28 @@
 #include <QueueList.h>
 #include <elapsedMillis.h>
 #include <brieflzCompress.h>
+
 #include "Packet.h"
+#include "Config.h"
+#include "Control.h"
 //#include <SerialFlash.h>
 
 #define TEST (false) //decides to use real or fake functions to allow testing
 #if TEST
 #include "Debug.h"
 #else
-#include <KRUPS_TC.h>
-//#include <KRUPS_Sensor.h>
+#include "KRUPS_TC.h"
+#include "KRUPS_Sensor.h"
 #endif
 
-#define PWR_PIN (23) //pin to maintain power
-#define BUFFER_SIZE   (8000) //size of the measurement buffer about the max ammount of data that can be compressed to packet size
-#define FLASH_PIN (0) //select pin for the flash chip
-#define TIME_TO_SPLASH_DOWN (15*60*1000) //Time until splash down routine begins in ms
-#define WORKSPACESIZE ((1UL << 8)*8) //extra space for compression work
-#define MEASURE_READ (33) //size of all the bytes coming in form the sensors
-#define COMPRESS_BUFF_SIZE (2100) // size of buffer to hold compression data
 
-#define ADXL377x    (17)
-#define ADXL377y    (16)
-#define ADXL377z    (14)
-
-#define hiXcorr     (0)
-#define hiYcorr     (0)
-#define hiZcorr     (0)
 
 
 volatile bool launched = false, ejected = true, splash_down = false, GPS_Mode = false;
 
+/*
+ * Variables associated with creating and tracking priority packets
+ */
 uint8_t priority_buf[BUFFER_SIZE]; // holds readings to be stored in priority packets
 size_t ploc = 0; //location in the buffer
 uint8_t numPriority = 0; //number of packets of this time made
