@@ -2,10 +2,10 @@
 // on the KRUPS Breakout board
 #ifndef KRUPS_TC_H
 #define KRUPS_TC_H
-#include <compress.h>
+#include "Control.h"
 #include <SPI.h>
 
-#define HARDWARE_SPI (true)
+#define HARDWARE_SPI (true) //determines if software or hardware SPI is used to read the TC's
 
 
 #define DEBUG		(0)
@@ -55,9 +55,11 @@ void setMUX(int j) {
 		break;
 	}
 }
+
 #if HARDWARE_SPI
 // read the output of the thermocouple converter and return the value
 // returns all ones (-.25 C) if an error was detected
+//Hardware SPI
 int16_t spiread32(int PINCS) {
 	digitalWrite(PINCS, LOW);
 	SPI.beginTransaction(SPISettings(14000000, MSBFIRST, SPI_MODE0));
@@ -85,6 +87,7 @@ int16_t spiread32(int PINCS) {
 	return d >> 18;
 }
 #else
+//Software spi
 int16_t spiread32(int PINCS) {
     int d = 0;
     digitalWriteFast(PINCS, LOW);
@@ -137,11 +140,13 @@ void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
 	int16_t two = spiread32(PINCS2);
 	int16_t three = spiread32(PINCS3);
 
+  #if DEBUG
 	Serial.print(float(one) *.25);
 	Serial.print("\t");
 	Serial.print (float(two)* .25);
 	Serial.print("\t");
 	Serial.println(float(three) * .25);
+  #endif
 
 	append(buf, loc, one);
 	append(buf, loc, two);

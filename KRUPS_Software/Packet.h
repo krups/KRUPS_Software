@@ -28,7 +28,7 @@ public:
 		{
 			data[loc+i] = a[i];
 		}
-   loc += len;
+    loc += len;
 
     length = loc;
 	}

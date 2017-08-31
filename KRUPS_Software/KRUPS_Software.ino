@@ -32,6 +32,9 @@ double avgCompressP = 0; //avg compression value for this type of packet
 elapsedMillis timeSinceP = 0; //time since this packet has been made last (ms)
 double avgTimeSinceP; //avg time to make a priority packet (s)
 
+/*
+ * Variables associated with creating and tracking regular packets
+ */
 uint8_t regular_buf[BUFFER_SIZE];
 size_t rloc = 0; //location in regular buffer
 uint8_t numRegular = 0; //number of packets of this time made
@@ -46,57 +49,18 @@ uint16_t bytesMade = 0; //total data generated to this point
 //uint16_t bytesSent = 0; //bytes sent by the modem
 uint8_t sendAttemptErrors = 0; // number of times the iridium modem throws an error while attempting to send
 
-IridiumSBD isbd(Serial1);  //the object for the
+IridiumSBD isbd(Serial1);  //the object for the iridium modem
 
 int16_t measure_reads = 0; //tells which cycle read we are on (0-3) to determine where to put data
 
+
+/*
+ * Message Queues 
+ */
 QueueList<Packet> message_queue; //queue of messages left to send, messages pushed into front, pulled out back
 QueueList<Packet> priority_queue; //queue of messages to send with higher priority
 
 bool inCallBack = false; //used for debug out put
-
-
-#if !TEST
-void printPacket(Packet packet, int32_t len)
-{
-  for(int i = 0; i < len; i++)
-  {
-    Serial.print(packet[i]);
-    Serial.print(" ");
-  }
-  Serial.println();
-  Serial.println();
-}
-
-int16_t fTemp = 1;
-
-void Read_temp(uint8_t *buf, size_t &loc)
-{
-  fTemp -= fTemp/5;
-  append(buf, loc, fTemp);
-}
-
-void Read_gyrof(uint8_t *buf, size_t &loc)
-{
-    int t = int(millis()/1000);
-    append(buf, loc, t);
-    append(buf, loc, 2*t);
-    append(buf, loc, 3*t);
-}
-#endif
-
-
-// Reads all axis of the ADXL377 accel and appends the values to
-// the end of the input buffer, and moves the location pointer accordingly
-void Read_hiaccel(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
-  int16_t xval, yval, zval;
-  xval = analogRead(ADXL377x);
-  yval = analogRead(ADXL377y);
-  zval = analogRead(ADXL377z);
-  append(buf, loc, xval + hiXcorr);
-  append(buf, loc, yval + hiYcorr);
-  append(buf, loc, zval + hiZcorr);
-}
 
 /*
  * GPS testing mode funciton to blast iridium at full pace
@@ -128,33 +92,6 @@ void Read_hiaccel(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
     delay(10*1000);
   }
  }
-
-
-/*
- * Reads the pwr_pin and checks if a power off signal has been sent
- */
-void checkPowerOffSignal()
-{
-  if(analogRead(PWR_PIN) == 4095 && millis() > 20 * 1000)
-  {
-    while(analogRead(PWR_PIN) == 4095);
-    //digitalWrite(13, LOW);
-    digitalWrite(PWR_PIN, LOW);
-  }
-}
-
-/*
-Grabs current time in millis and saves it as a three byte number
-in the buffer
-*/
-void save_time(uint8_t* buff, size_t& loc)
-{
-  long time = millis();
-  buff[loc++] = time & 0xFF; //low byte
-  buff[loc++] = time >> 8; //mid byte
-  buff[loc++] = time >> 16; //top byte
-}
-
 
 /*
  * Fills a packet from loc 2 to 12 with stats from current program run

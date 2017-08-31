@@ -7,6 +7,8 @@ Email: c4dietz@gmail.com
 Date: 5/11/17
 */
 
+//TODO: Implement modular debugging output
+
 
 #ifndef DEBUG_H
 #define DEBUG_H
@@ -21,7 +23,7 @@ Date: 5/11/17
 #define CLK     (13)
 
 #include"Packet.h"
-#include<compress.h>
+#include"Control.h"
 
 extern int16_t measure_reads;
 extern int16_t num_packets;
@@ -76,17 +78,6 @@ void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
   append(buf, loc, 20 + 3*mux + 0);
   append(buf, loc, 20 + 3*mux + 1);
   append(buf, loc, 20 + 3*mux + 2);
-}
-
-void printPacket(Packet packet, int32_t len)
-{
-  for(int i = 0; i < len; i++)
-  {
-    Serial.print(packet[i]);
-    Serial.print(" ");
-  }
-  Serial.println();
-  Serial.println();
 }
 
 //empty funtions to allow compilation, do not effect testing

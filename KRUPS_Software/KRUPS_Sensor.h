@@ -8,7 +8,9 @@
 #include <Adafruit_L3GD20_U.h>
 #include <Adafruit_LSM303_U.h>
 #include <Adafruit_LSM9DS1.h>
-#include <compress.h>
+
+#include "Control.h"
+#include "Config.h"
 
 // Set correction values appropriately to zero sensors when in a
 // known situation e.g. board laying on a level, unmoving surface
@@ -181,6 +183,18 @@ void Read_hiaccel(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
 	append(buf, loc, xval + hiXcorr);
 	append(buf, loc, yval + hiYcorr);
 	append(buf, loc, zval + hiZcorr);
+}
+
+/*
+Grabs current time in millis and saves it as a three byte number
+in the buffer
+*/
+void save_time(uint8_t* buff, size_t& loc)
+{
+  long time = millis();
+  buff[loc++] = time & 0xFF; //low byte
+  buff[loc++] = time >> 8; //mid byte
+  buff[loc++] = time >> 16; //top byte
 }
 
 // accel ISR sets launched bool
