@@ -1,6 +1,9 @@
-// Wrapper functions for all sensors on the KRUPS breakout board
-// all functions both retrieve measurements, and append to the
-// buffer to be compressed
+/*
+ * Wrapper functions for all sensors on the KRUPS breakout board
+ * all functions both retrieve measurements, and append to the
+ * buffer to be compressed
+ */
+
 #ifndef KRUPS_SENSOR_H
 #define KRUPS_SENSOR_H
 

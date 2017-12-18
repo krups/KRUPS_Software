@@ -1,7 +1,7 @@
 #ifndef PACKET_H
 #define PACKET_H
 
-#include"Control.h"
+#include "Config.h"
 
 class Packet
 {
@@ -57,6 +57,14 @@ public:
 private:
 	uint8_t data[PACKET_SIZE];
   uint16_t length;
+
+  //Appends a 16 bit interger to a buffer, also increments
+  //the provided location in the buffer
+  void append(uint8_t *buf, size_t &loc, int16_t input) {
+    buf[loc++] = input;
+    buf[loc++] = input >> 8;
+  }
+  
 };
 
 

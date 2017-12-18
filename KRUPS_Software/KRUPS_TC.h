@@ -1,14 +1,16 @@
-// Library of wrapper functions for reading the thermalcouples
-// on the KRUPS Breakout board
+/*
+ * Library of wrapper functions for reading the thermalcouples 
+ * on the KRUPS Breakout board
+ */
+
 #ifndef KRUPS_TC_H
 #define KRUPS_TC_H
 #include "Control.h"
+#include "Config.h"
 #include <SPI.h>
 
 #define HARDWARE_SPI (true) //determines if software or hardware SPI is used to read the TC's
 
-
-#define DEBUG		(0)
 
 #define PINEN		(5)
 #define PINMUX0		(2)
@@ -116,6 +118,7 @@ int16_t spiread32(int PINCS) {
 }
 #endif
 
+//DEPRECATED
 // reads all thermocouples and appends the values to the input buffer
 // and moves the location pointer appropriately, requires 16 free bytes in buf
 void Read_TC(uint8_t *buf, size_t &loc) {
@@ -134,6 +137,10 @@ void Read_TC(uint8_t *buf, size_t &loc) {
 	}
 }
 
+//Reads the 3 TC's at a given mux posistion
+//Allows for looping over the muxes and handling
+//the 100 ms delay between mux setting and TC
+//reading in an outside loop
 void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
 {
 	int16_t one = spiread32(PINCS1);

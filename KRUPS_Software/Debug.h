@@ -1,11 +1,11 @@
 /*
-Header to redefine critical funcitons to provide dummy data
-to allow debugging and testing on the main software
-
-Author: Collin Dietz
-Email: c4dietz@gmail.com
-Date: 5/11/17
-*/
+ * Header to redefine critical funcitons to provide dummy data
+ * to allow debugging and testing on the main software
+ * 
+ * Author: Collin Dietz
+ * Email: c4dietz@gmail.com
+ * Date: 5/11/17
+ */
 
 //TODO: Implement modular debugging output
 
@@ -13,6 +13,7 @@ Date: 5/11/17
 #ifndef DEBUG_H
 #define DEBUG_H
 
+//Pinout definitions for sensors
 #define PINEN   (5)
 #define PINMUX0   (2)
 #define PINMUX1   (3)
