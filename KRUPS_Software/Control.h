@@ -14,6 +14,32 @@
 #include "Packet.h"
 #include "Config.h"
 
+/*
+ * Decides sorting of packets in the priority queue
+ * Method: Checks the priority flag of the packet 
+ * if same priority sorts by time stap of first sensor read
+ */
+bool packetPriorityCalc(Packet a, Packet b)
+{
+  if(a.getPriority() && !b.getPriority())
+  {
+    return true; //a is priority, b is not, a has higher priority
+  }
+  else if(!a.getPriority()&& b.getPriority())
+  {
+    return false; //a is not priority, b is, b has higher priority
+  }
+  else //have same priority flag compare time
+  {
+    //check time stamps and check if already packed for transmission
+    //grab time stamps from a and b
+    int timeA = (a[2] << 8) + a[3];
+    int timeB = (b[2] << 8) + b[3];
+    return timeA <= timeB; //priority goes to which ever was made first
+  }
+}
+
+
 //Appends a 16 bit interger to a buffer, also increments
 //the provided location in the buffer
 void append(uint8_t *buf, size_t &loc, int16_t input) {
@@ -103,7 +129,7 @@ extern uint8_t numRegular, numPriority, sendAttemptErrors;
 extern uint16_t bytesMade;
 extern double avgCompressR, avgCompressP, avgTimeSinceR, avgTimeSinceP;
 extern volatile bool GPS_Mode, splash_down;
-extern QueueList<Packet> message_queue, priority_queue;
+extern PriorityQueue<Packet> message_queue;
 extern size_t rloc, ploc;
 extern elapsedMillis timeSinceR, timeSinceP;
 
@@ -175,8 +201,6 @@ void checkSerialIn()
         printMessageln(numRegular + numPriority);
         printMessage("In queue: ");
         printMessageln(message_queue.count());
-        printMessage("In  priority_queue: ");
-        printMessageln(priority_queue.count());
         printMessage("Regular Location: ");
         printMessageln(rloc);
         printMessage("Priority Location: ");

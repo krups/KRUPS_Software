@@ -16,14 +16,20 @@ public:
   }
 
 	//creates a packet and loads data
-	Packet(int16_t number, uint8_t a[], int16_t len)
+	Packet(int16_t number, uint8_t a[], int16_t len, bool priority)
 	{
+    this->priority = priority;
 		size_t loc = 0;
 		append(data, loc, number); //append decompress length to the front of the packet
     for(loc; loc < HEADER_SIZE; loc++) //init the debug data slots to 0
     {
       data[loc] = 0;
     }
+    //save a packing time stamp in spots 2-3 for priority control
+    size_t loc_time = 2; //start  after the decompress len
+    uint16_t timeSeconds  = millis()/1000;
+    append(data, loc_time, timeSeconds);
+		
 		for(int i = 0; i < len; i++) //copy over the data
 		{
 			data[loc+i] = a[i];
@@ -54,9 +60,15 @@ public:
 		return data[i];
 	}
 
+  bool getPriority()
+  {
+    return priority;
+  }
+
 private:
 	uint8_t data[PACKET_SIZE];
   uint16_t length;
+  bool priority;
 
   //Appends a 16 bit interger to a buffer, also increments
   //the provided location in the buffer
