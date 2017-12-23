@@ -6,11 +6,17 @@
  
 #include<Adafruit_GPS.h>
 #include <elapsedMillis.h>
+#include"Config.h"
+#include"Control.h"
 
-#define GPS_Serial (Serial1) //Hardware serial connection for the module
+#define GPS_Serial () //Hardware serial connection for the module
 
 Adafruit_GPS GPS(&GPS_Serial); //global GPS object
 
+
+/*
+ * Struct to hold the most recent correct GPS data
+ */
 struct GPS_Data
 {
   uint8_t hour, minute, seconds, year, month, day;
@@ -30,6 +36,11 @@ struct GPS_Data
 
 GPS_Data lastValid;
 
+//checks if the struct has a valid GPS posisiton saved in it
+boolean haveValidPos()
+{
+  return lastValid.fixquality != 0;
+}
 
 /*
  * Initilizes the GPS module, sets data output, freq
@@ -45,6 +56,7 @@ void init_GPS()
   //if we desire wipe the flash on power on
   #if(GPS_WIPE_ON_START)
       GPS.sendCommand(PMTK_LOCUS_ERASE_FLASH);
+      printMessageln("GPS log erased");
   #endif
   
   //set output for RMC+GGA data (what the parser cares about)
@@ -65,9 +77,14 @@ void init_GPS()
     }
   }
   #endif
+
+  lastValid.fixquality = 0; //functions as flag that a valid pos is found
 }
 
-
+/*
+ * pulls in data from the GPS, if data is GPS valid is parsed
+ * if GPS has a fix stores the most recent pos in lastValid
+ */
 void poll_GPS()
 {
   char c = GPS.read(); //keep pulling in data
@@ -81,17 +98,31 @@ void poll_GPS()
     //if good data save as most recent pos
     if(GPS.fix)
     {
+      printMessageln("GPS pos updated");
       lastValid.hour = GPS.hour; lastValid.minute = GPS.minute; lastValid.seconds = GPS.seconds;
       lastValid.milliseconds = GPS.milliseconds;
       lastValid.latitude = GPS.latitude; lastValid.longitude = GPS.longitude;
-      lastValid.latitude_fixed = GPS.latitude_fixed; lastValid.longitude_fixed = lastValid.longitude_fixed;
-      lastValid.latitudeDegrees = GPS.latitudeDegrees; lastValid.longitudeDegrees = lastValid.longitudeDegrees;
-      lastValid.geoidheight = GPS.geoidheight; lastValid.altitude = lastValid.altitude;
-      lastValid.speed = GPS.speed; lastValid.angle = lastValid.angle; 
-      lastValid.magvariation = GPS.magvariation; lastValid.HDOP = lastValid.HDOP;
-      lastValid.lat = GPS.lat; lastValid.lon = lastValid.lon; lastValid.mag = GPS.mag;
-      lastValid.fixquality = GPS.fixquality; lastValid.satellites = lastValid.satellites;
+      lastValid.latitude_fixed = GPS.latitude_fixed; lastValid.longitude_fixed = GPS.longitude_fixed;
+      lastValid.latitudeDegrees = GPS.latitudeDegrees; lastValid.longitudeDegrees = GPS.longitudeDegrees;
+      lastValid.geoidheight = GPS.geoidheight; lastValid.altitude = GPS.altitude;
+      lastValid.speed = GPS.speed; lastValid.angle = GPS.angle; 
+      lastValid.magvariation = GPS.magvariation; lastValid.HDOP = GPS.HDOP;
+      lastValid.lat = GPS.lat; lastValid.lon = GPS.lon; lastValid.mag = GPS.mag;
+      lastValid.fixquality = GPS.fixquality; lastValid.satellites = GPS.satellites;
     }
   }
+}
+
+/*
+ * reports relevant gps pos data as a string off of lastValid. 
+ * Check haveValidPos() to make sure that data is valid 
+ */
+String currGPSPos()
+{
+  String pos = String(lastValid.hour) + ":" + String(lastValid.minute) + "." + String(lastValid.seconds) + '\n'; //add time info to string 
+  pos += String(lastValid.latitudeDegrees) + '\t' + String(lastValid.longitudeDegrees) + '\n'; //posistion info
+  pos += String(lastValid.speed) + "kn @" +  String(lastValid.angle) +'\n';
+  pos += String(lastValid.altitude) + "m " + String(lastValid.fixquality);
+  return pos;
 }
 

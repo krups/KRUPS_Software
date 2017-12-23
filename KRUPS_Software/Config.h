@@ -54,6 +54,12 @@
  #define USE_MAG (false)
  #define USE_TIME (true)
 
+ /*
+  * GPS Control
+  */
+#define GPS_WIPE_ON_START (false) //controls if the GPS should wipe all previous logging on power on
+#define USE_GPS_LOGGING (true) //controls if the GPS should turn on logging on initiation
+#define GPS_START_TIME_MAX (1*60*1000) //time in ms to wait for logging to start
 
 #endif
 

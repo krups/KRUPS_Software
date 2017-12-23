@@ -8,6 +8,7 @@
 #include "Config.h"
 #include "Control.h"
 //#include <SerialFlash.h>
+#include "KRUPS_GPS.h" //TODO: add debug functions
 
 #if DEBUG
 #include "Debug.h"
