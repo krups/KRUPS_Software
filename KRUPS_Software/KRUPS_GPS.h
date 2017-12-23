@@ -9,7 +9,7 @@
 #include"Config.h"
 #include"Control.h"
 
-#define GPS_Serial () //Hardware serial connection for the module
+#define GPS_Serial (Serial2) //Hardware serial connection for the module
 
 Adafruit_GPS GPS(&GPS_Serial); //global GPS object
 
@@ -32,15 +32,33 @@ struct GPS_Data
   float speed, angle, magvariation, HDOP;
   char lat, lon, mag;
   uint8_t fixquality, satellites;
+  boolean transmitted;
 };
 
 GPS_Data lastValid;
+
+/*
+ * Control functions for lastValid GPS_Data
+ */
 
 //checks if the struct has a valid GPS posisiton saved in it
 boolean haveValidPos()
 {
   return lastValid.fixquality != 0;
 }
+
+//sets transmitted flag to true in valid to make sure it isnt double sent
+void GPS_transmissionComplete()
+{
+  lastValid.transmitted = true;
+}
+
+// checks if current gps data has been transmitted yet
+boolean haveTransmitted()
+{
+  return lastValid.transmitted;
+}
+
 
 /*
  * Initilizes the GPS module, sets data output, freq
@@ -67,6 +85,7 @@ void init_GPS()
   //start up logging, try as long as GPS_START_TIME_MAX
   elapsedMillis gpsTimeout = 0;
 
+  printMessageln("Starting GPS logging");
   while (gpsTimeout < GPS_START_TIME_MAX)
   {
     if(GPS.LOCUS_StartLogger())
@@ -78,7 +97,7 @@ void init_GPS()
   }
   #endif
 
-  lastValid.fixquality = 0; //functions as flag that a valid pos is found
+  lastValid.fixquality = 0; //functions as flag that a valid pos is found, have to initilize
 }
 
 /*
@@ -109,6 +128,7 @@ void poll_GPS()
       lastValid.magvariation = GPS.magvariation; lastValid.HDOP = GPS.HDOP;
       lastValid.lat = GPS.lat; lastValid.lon = GPS.lon; lastValid.mag = GPS.mag;
       lastValid.fixquality = GPS.fixquality; lastValid.satellites = GPS.satellites;
+      lastValid.transmitted = false;
     }
   }
 }
