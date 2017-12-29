@@ -22,6 +22,7 @@
   #include <Adafruit_L3GD20_U.h>
   #include <Adafruit_LSM303_U.h>
 #elif SENSOR_PACK == MPU9
+  #include <SparkFunMPU9250-DMP.h>
 #endif
 
 
@@ -204,7 +205,44 @@
     }
     
 #elif SENSOR_PACK == MPU9
-
+    MPU9250_DMP sense;
+    
+    // initialize the sensors (mag, gyro, accel)
+    void init_Sensors(void)
+    {
+        sense.begin();
+        sense.setAccelFSR(16); //16 g
+        sense.setGyroFSR(2000); //2000 DPS
+        //mag sensor is not calibrateable
+    }
+    
+    // Reads all axis of the MPU9250 gyro and appends values to
+    // end of the input buffer and moves location pointer accordingly
+    void Read_gyro(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
+        sense.updateGyro();
+        append(buf, loc, sense.gx + gyroXcorr);
+        append(buf, loc, sense.gy + gyroYcorr);
+        append(buf, loc, sense.gz + gyroZcorr);
+    }
+    
+    // Reads all axis of the MPU9250 accel and appends the values to
+    // end of the input buffer and moves location pointer accordingly
+    void Read_loaccel(uint8_t*buf, size_t &loc) { // requires 6 bytes in buffer
+        sense.updateAccel();
+        append(buf, loc, sense.ax + accelXcorr);
+        append(buf, loc, sense.ay + accelYcorr);
+        append(buf, loc, sense.az + accelZcorr);
+    }
+    
+    // Reads all axis of the MPU9250 magnetometer and appends the values to
+    // end of the input buffer and moves location pointer accordingly
+    void Read_mag(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
+        sense.updateCompass();
+        append(buf, loc, sense.mx + magXcorr);
+        append(buf, loc, sense.my + magYcorr);
+        append(buf, loc, sense.mz + magZcorr);
+    }
+    
 #endif
 
 // Reads all axis of the ADXL377 accel and appends the values to

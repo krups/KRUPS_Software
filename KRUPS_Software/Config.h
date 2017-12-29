@@ -48,7 +48,7 @@
 /*
  * Sensor Control
  */
- #define SENSOR_PACKAGE (LSM9)
+ #define SENSOR_PACKAGE (MPU9)
  #define USE_HI_ACCEL (true)
  #define USE_GYRO (true)
  #define USE_LO_ACCEL (true)
