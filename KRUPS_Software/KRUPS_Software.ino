@@ -137,7 +137,7 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
     #endif
 
     #if USE_GYRO 
-      readGyro(buff, loc);        // 6 bytes
+      Read_gyro(buff, loc);        // 6 bytes
     #endif
 
     #if USE_HI_ACCEL
@@ -145,11 +145,11 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
     #endif
 
     #if USE_LO_ACCEL
-      readAccel(buff, loc);   //lo acccel  // 6 bytes
+      Read_loaccel(buff, loc);   //lo acccel  // 6 bytes
     #endif
     
     #if USE_MAG
-      readMag(buff, loc);         // 6 bytes
+      Read_mag(buff, loc);         // 6 bytes
     #endif
 
     
@@ -400,7 +400,7 @@ void setup() {
     printMessageln("Initializing Sensors");
     
     //sensors
-    initSensors();
+    init_Sensors();
     init_TC();
 
     //DEPRECATED interupts
