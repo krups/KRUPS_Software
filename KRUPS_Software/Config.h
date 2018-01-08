@@ -17,6 +17,7 @@
 #define OUTPUT_PACKETS (true) //deciides if packets should be output on succesful iridium transfer 
 #define DEBUG_IRIDIUM (true) //decides if status messages from iridium should be printed
 #define USE_LED (true) //decides if the LED on pin 13 should be controlable for visual debugging 
+#define USE_MODEM (false) //turns on/off modem
 
 /*
  * Device pins
