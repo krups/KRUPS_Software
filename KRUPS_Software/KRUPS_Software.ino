@@ -10,7 +10,7 @@
 //#include <SerialFlash.h>
 #include "KRUPS_GPS.h" //TODO: add debug functions
 
-#if DEBUG
+#if DEBUG_SENSORS
 #include "Debug.h"
 #else
 #include "KRUPS_TC.h"
@@ -373,6 +373,14 @@ void splashDown()
   Serial.print("In  priority_queue: ");
   Serial.println(priority_queue.count());
   */
+
+  #if USE_GPS_LOGGING
+    if(GPS.LOCUS_ReadStatus())
+    {
+      int curr = (int)GPS.LOCUS_records;
+      Serial.print(curr); Serial.println(" Records");
+    }
+  #endif
 }
 
 ///run if packet is not sent on a try

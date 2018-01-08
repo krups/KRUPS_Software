@@ -10,6 +10,7 @@
 #include"Control.h"
 
 #define GPS_Serial (Serial2) //Hardware serial connection for the module
+#define GPS_Enable (8) //GPS enable pin
 
 Adafruit_GPS GPS(&GPS_Serial); //global GPS object
 
@@ -69,6 +70,8 @@ boolean haveTransmitted()
  */
 void init_GPS()
 {
+  pinMode(GPS_Enable, OUTPUT);
+  digitalWrite(GPS_Enable, HIGH); //hold gps enable up
   GPS.begin(9600); //start gps and default baud
   
   //if we desire wipe the flash on power on
@@ -117,7 +120,7 @@ void poll_GPS()
     //if good data save as most recent pos
     if(GPS.fix)
     {
-      printMessageln("GPS pos updated");
+      //printMessageln("GPS pos updated");
       lastValid.hour = GPS.hour; lastValid.minute = GPS.minute; lastValid.seconds = GPS.seconds;
       lastValid.milliseconds = GPS.milliseconds;
       lastValid.latitude = GPS.latitude; lastValid.longitude = GPS.longitude;

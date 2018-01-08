@@ -32,7 +32,7 @@
 
 #define ADXL377x		(17)
 #define ADXL377y		(16)
-#define ADXL377z		(14)
+#define ADXL377z		(15)
 
 // define interrupt pins
 #define GYRO_INTERRUPT          (0)
