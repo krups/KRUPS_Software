@@ -1,6 +1,6 @@
 #define CAPSULE_SERIAL (Serial2)
 #define KICC_SERIAL (Serial)
-#define BAUD (9600)
+#define BAUD (19200)
 void setup()
 {
   CAPSULE_SERIAL.begin(BAUD);
