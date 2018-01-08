@@ -54,7 +54,9 @@ uint16_t bytesMade = 0; //total data generated to this point
 uint8_t sendAttemptErrors = 0; // number of times the iridium modem throws an error while attempting to send
 int16_t measure_reads = 0; //tells which cycle read we are on (0-3) to determine where to put data
 
-IridiumSBD isbd(Serial1);  //the object for the iridium modem
+#if USE_MODEM
+  IridiumSBD isbd(Serial1);  //the object for the iridium modem
+#endif
 
 /*
  * Message Queues 
@@ -71,7 +73,10 @@ bool inCallBack = false; //used for debug out put
  {
   GPS_Mode = true; //set flag to disable nonGPS actions in call back
   blinkLed(2, 250);
-  isbd.sendSBDText("GPS Mode Activated"); //send an indicator message
+  
+  #if USE_MODEM
+    isbd.sendSBDText("GPS Mode Activated"); //send an indicator message
+  #endif
   
   //fill dummy packet
   size_t loc = 0;
@@ -84,7 +89,9 @@ bool inCallBack = false; //used for debug out put
   //send until power off (also checks for power off in callback)
   while(true)
   {
-    isbd.sendSBDBinary(compressedData, 1960);
+    #if USE_MODEM
+      isbd.sendSBDBinary(compressedData, 1960);
+    #endif
     checkPowerOffSignal();
     delay(GPS_MODE_FREQ*1000);
   }
@@ -100,7 +107,11 @@ void startSendingMessage(QueueList<Packet>& queue)
   uint16_t loc  = packet.getLength();
   packStats(packet);
   //attempt to send
-  int response =  isbd.sendSBDBinary(packet.getArrayBase(), loc);
+  #if USE_MODEM
+    int response =  isbd.sendSBDBinary(packet.getArrayBase(), loc);
+  #else
+    int response = 0;
+  #endif
   
   //if it returns 0 message is sent
   if(response == 0)
@@ -316,6 +327,7 @@ void splashDown()
       printMessage(100 - 100* double(compressLen)/(ploc+rloc));
       printMessageln("%");
     }
+    
   }
 
   //if we havent made it into one packet keep the two split up and pack them
@@ -416,14 +428,15 @@ void setup() {
     //init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
 
     //Settings for iridium Modem
-    #if OUTPUT_MESSAGES && DEBUG_IRIDIUM
+    #if OUTPUT_MESSAGES && DEBUG_IRIDIUM && USE_MODEM
       isbd.attachConsole(Serial);
       isbd.attachDiags(Serial);
     #endif
-    
-    isbd.adjustSendReceiveTimeout(45);
-    isbd.useMSSTMWorkaround(false);
-    isbd.setPowerProfile(0);
+
+    #if USE_MODEM
+      isbd.adjustSendReceiveTimeout(45);
+      isbd.useMSSTMWorkaround(false);
+      isbd.setPowerProfile(0);
     
 
     printMessage("Turning on Modem");
@@ -442,6 +455,7 @@ void setup() {
     printMessage("Modem started: ");
     printMessage(millis()/1000);
     printMessageln(" s");
+    #endif
 
     init_GPS(); //start the GPS
 
@@ -474,7 +488,13 @@ void loop() {
     //always has priority after splashdown
     if(splash_down && haveValidPos() && !haveTransmitted())
     {
-      int response = isbd.sendSBDText(currGPSPos().c_str());
+      #if USE_MODEM
+        int response = isbd.sendSBDText(currGPSPos().c_str());
+      #else
+        int response = 0;
+        Serial.println("Current Pos");
+        Serial.println(currGPSPos());
+      #endif
       if(response == 0)
       {
         GPS_transmissionComplete(); //if transmission was succesful set flag
