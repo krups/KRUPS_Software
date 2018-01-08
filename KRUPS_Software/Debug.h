@@ -125,5 +125,17 @@ void readMag(uint8_t *buf, size_t &loc)
     append(buf, loc, 3);
 }
 
+/*
+Grabs current time in millis and saves it as a three byte number
+in the buffer
+*/
+void save_time(uint8_t* buff, size_t& loc)
+{
+  long time = millis();
+  buff[loc++] = time & 0xFF; //low byte
+  buff[loc++] = time >> 8; //mid byte
+  buff[loc++] = time >> 16; //top byte
+}
+
 
 #endif

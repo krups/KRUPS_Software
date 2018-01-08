@@ -12,7 +12,7 @@
 /*
  * Debugging Control
  */
-#define DEBUG (false) //decides to use real or fake functions to allow testing
+#define DEBUG (true) //decides to use real or fake functions to allow testing
 #define OUTPUT_MESSAGES (true) //decides if debug messages should be sent over serial
 #define OUTPUT_PACKETS (true) //deciides if packets should be output on succesful iridium transfer 
 #define DEBUG_IRIDIUM (true) //decides if status messages from iridium should be printed
@@ -50,9 +50,9 @@
  * Sensor Control
  */
  #define USE_HI_ACCEL (true)
- #define USE_GYRO (false)
- #define USE_LO_ACCEL (false)
- #define USE_MAG (false)
+ #define USE_GYRO (true)
+ #define USE_LO_ACCEL (true)
+ #define USE_MAG (true)
  #define USE_TIME (true)
 
 
