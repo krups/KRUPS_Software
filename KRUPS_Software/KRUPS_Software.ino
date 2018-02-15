@@ -8,8 +8,9 @@
 #include "Config.h"
 #include "Control.h"
 //#include <SerialFlash.h>
+#include "KRUPS_GPS.h" //TODO: add debug functions
 
-#if DEBUG
+#if DEBUG_SENSORS
 #include "Debug.h"
 #else
 #include "KRUPS_TC.h"
@@ -53,7 +54,9 @@ uint16_t bytesMade = 0; //total data generated to this point
 uint8_t sendAttemptErrors = 0; // number of times the iridium modem throws an error while attempting to send
 int16_t measure_reads = 0; //tells which cycle read we are on (0-3) to determine where to put data
 
-IridiumSBD isbd(Serial1);  //the object for the iridium modem
+#if USE_MODEM
+  IridiumSBD isbd(Serial1);  //the object for the iridium modem
+#endif
 
 /*
  * Message Queues 
@@ -70,7 +73,10 @@ bool inCallBack = false; //used for debug out put
  {
   GPS_Mode = true; //set flag to disable nonGPS actions in call back
   blinkLed(2, 250);
-  isbd.sendSBDText("GPS Mode Activated"); //send an indicator message
+  
+  #if USE_MODEM
+    isbd.sendSBDText("GPS Mode Activated"); //send an indicator message
+  #endif
   
   //fill dummy packet
   size_t loc = 0;
@@ -83,7 +89,9 @@ bool inCallBack = false; //used for debug out put
   //send until power off (also checks for power off in callback)
   while(true)
   {
-    isbd.sendSBDBinary(compressedData, 1960);
+    #if USE_MODEM
+      isbd.sendSBDBinary(compressedData, 1960);
+    #endif
     checkPowerOffSignal();
     delay(GPS_MODE_FREQ*1000);
   }
@@ -99,7 +107,11 @@ void startSendingMessage(QueueList<Packet>& queue)
   uint16_t loc  = packet.getLength();
   packStats(packet);
   //attempt to send
-  int response =  isbd.sendSBDBinary(packet.getArrayBase(), loc);
+  #if USE_MODEM
+    int response =  isbd.sendSBDBinary(packet.getArrayBase(), loc);
+  #else
+    int response = 0;
+  #endif
   
   //if it returns 0 message is sent
   if(response == 0)
@@ -281,7 +293,8 @@ void splashDown()
   printMessageln("Splashing Down");
   unsigned long compressLen;
   splash_down = true; //set flag
-
+  
+  //clean up the rest of the data in the buffers and put in queue
   //see if the remainder can be made one packet
   bool inOnePacket = false;
   if(ploc + rloc < COMPRESS_BUFF_SIZE)
@@ -314,6 +327,7 @@ void splashDown()
       printMessage(100 - 100* double(compressLen)/(ploc+rloc));
       printMessageln("%");
     }
+    
   }
 
   //if we havent made it into one packet keep the two split up and pack them
@@ -359,22 +373,36 @@ void splashDown()
   Serial.print("In  priority_queue: ");
   Serial.println(priority_queue.count());
   */
+
+  #if USE_GPS_LOGGING
+    if(GPS.LOCUS_ReadStatus())
+    {
+      int curr = (int)GPS.LOCUS_records;
+      Serial.print(curr); Serial.println(" Records");
+    }
+  #endif
 }
 
 ///run if packet is not sent on a try
 bool ISBDCallback() {
-    //reports that we have entered call back
+    //handles call back flag
     if(!inCallBack)
     {
       //Serial.println("Call Back");
       inCallBack = true;
     }
+
+    
     if(!splash_down && !GPS_Mode) //if we haven't splashed down or we arent in GPS Mode
     {
           do_tasks(); //make sure we are still reading in measurements and building packets
     }
+    else if(!GPS_Mode)//post splash down tasks
+    {
+      poll_GPS(); //if we are done reading sensors (i.e. splashed down) read in GPS data
+    }
     
-    checkSerialIn();
+    checkSerialIn(); //check for serial commands
     checkPowerOffSignal();
     
     return true;
@@ -408,18 +436,16 @@ void setup() {
     //init_gyro_interrupt(180, 0, 0x00);          // set for Ejection detection
 
     //Settings for iridium Modem
-    #if OUTPUT_MESSAGES && DEBUG_IRIDIUM
+    #if OUTPUT_MESSAGES && DEBUG_IRIDIUM && USE_MODEM
       isbd.attachConsole(Serial);
       isbd.attachDiags(Serial);
     #endif
+
+    #if USE_MODEM
+      isbd.adjustSendReceiveTimeout(45);
+      isbd.useMSSTMWorkaround(false);
+      isbd.setPowerProfile(0);
     
-    isbd.adjustSendReceiveTimeout(45);
-    isbd.useMSSTMWorkaround(false);
-    isbd.setPowerProfile(0);
-    
-    //init packet timers
-    timeSinceR = 0;
-    timeSinceP = 0;
 
     printMessage("Turning on Modem");
     int err;
@@ -437,23 +463,52 @@ void setup() {
     printMessage("Modem started: ");
     printMessage(millis()/1000);
     printMessageln(" s");
+    #endif
+
+    init_GPS(); //start the GPS
 
     //check the input voltage and turn of GPS mode if 3.3v
     if(powerMode > 3000 && powerMode < 3250)
     {
       GPS_Test_Mode();
     }
+
+    //init packet timers
+    timeSinceR = 0;
+    timeSinceP = 0;
 }
 
 void loop() {
-    //after ejection before splash_down routine
-    //digitalWrite(13, HIGH);
-    if(!splash_down)
+    if(!splash_down) //pre splashdown tasks
     {
       do_tasks(); //complete needed tasks for measurment
     }
-    
-    if(!priority_queue.isEmpty()) //if there is priority data to send, do so
+    else //post splash down tasks
+    {
+      poll_GPS(); //if we are done reading sensors (i.e. splashed down) read in GPS data
+    }
+
+
+    /*
+     * communication control
+     */
+    //if we have a valid GPS pos that hasnt been sent trasmit it
+    //always has priority after splashdown
+    if(splash_down && haveValidPos() && !haveTransmitted())
+    {
+      #if USE_MODEM
+        int response = isbd.sendSBDText(currGPSPos().c_str());
+      #else
+        int response = 0;
+        Serial.println("Current Pos");
+        Serial.println(currGPSPos());
+      #endif
+      if(response == 0)
+      {
+        GPS_transmissionComplete(); //if transmission was succesful set flag
+      }
+    }
+    else if(!priority_queue.isEmpty()) //if there is priority data to send, do so
     {
       startSendingMessage(priority_queue); //send a message from the priority list
       inCallBack = false; //reset callback flag after leaving message sending protocol
@@ -467,10 +522,13 @@ void loop() {
     checkSerialIn();
     checkPowerOffSignal();  
 
+    //No longer need the capsule to turn off, if it is sending data we can find it, if not who cares
     //If we have gone for long enough turn off the teensy
+    /*
     if(splash_down && millis() >= (TIME_TO_SPLASH_DOWN + 60*1000) && message_queue.isEmpty() && priority_queue.isEmpty())
     {
       isbd.sendSBDText("Tweezers");
       digitalWrite(PWR_PIN, LOW);
     }
+    */
 }
