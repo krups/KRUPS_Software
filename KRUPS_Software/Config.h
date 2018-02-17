@@ -12,7 +12,7 @@
 /*
  * Debugging Control
  */
-#define DEBUG (true) //decides to use real or fake functions to allow testing
+#define DEBUG_SENSORS (true) //decides to use real or fake functions to allow testing
 #define OUTPUT_MESSAGES (true) //decides if debug messages should be sent over serial
 #define OUTPUT_PACKETS (true) //deciides if packets should be output on succesful iridium transfer 
 #define DEBUG_IRIDIUM (true) //decides if status messages from iridium should be printed
@@ -28,7 +28,8 @@
 /*
  * Flight control data
  */
-#define TIME_TO_SPLASH_DOWN (10*60*1000) //Time until splash down routine begins in ms
+#define MINS_TO_SPLASH_DOWN (3) //time until splashdown in mins
+#define TIME_TO_SPLASH_DOWN (MINS_TO_SPLASH_DOWN*60*1000) //Time until splash down routine begins in ms
 #define MEASURE_READ (51) //size of all the bytes coming in form the sensors
 #define GPS_MODE_FREQ (10) //number of seconds to delay betweeen messages in GPS mode for testing at base
 
@@ -49,12 +50,19 @@
 /*
  * Sensor Control
  */
+ #define SENSOR_PACKAGE (MPU9)
  #define USE_HI_ACCEL (true)
  #define USE_GYRO (true)
  #define USE_LO_ACCEL (true)
  #define USE_MAG (true)
  #define USE_TIME (true)
 
+ /*
+  * GPS Control
+  */
+#define GPS_WIPE_ON_START (true) //controls if the GPS should wipe all previous logging on power on
+#define USE_GPS_LOGGING (true) //controls if the GPS should turn on logging on initiation
+#define GPS_START_TIME_MAX (1*60*1000) //time in ms to wait for logging to start
 
 #endif
 

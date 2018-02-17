@@ -8,8 +8,9 @@
 #include "Config.h"
 #include "Control.h"
 //#include <SerialFlash.h>
+#include "KRUPS_GPS.h" //TODO: add debug functions
 
-#if DEBUG
+#if DEBUG_SENSORS
 #include "Debug.h"
 #else
 #include "KRUPS_TC.h"
@@ -148,7 +149,7 @@ void readInData(uint8_t* buff, size_t& loc)
     #endif
 
     #if USE_GYRO 
-      readGyro(buff, loc);        // 6 bytes
+      Read_gyro(buff, loc);        // 6 bytes
     #endif
 
     #if USE_HI_ACCEL
@@ -156,11 +157,11 @@ void readInData(uint8_t* buff, size_t& loc)
     #endif
 
     #if USE_LO_ACCEL
-      readAccel(buff, loc);   //lo acccel  // 6 bytes
+      Read_loaccel(buff, loc);   //lo acccel  // 6 bytes
     #endif
     
     #if USE_MAG
-      readMag(buff, loc);         // 6 bytes
+      Read_mag(buff, loc);         // 6 bytes
     #endif
 
     
@@ -291,7 +292,8 @@ void splashDown()
   printMessageln("Splashing Down");
   unsigned long compressLen;
   splash_down = true; //set flag
-
+  
+  //clean up the rest of the data in the buffers and put in queue
   //see if the remainder can be made one packet
   bool inOnePacket = false;
   if(ploc + rloc < COMPRESS_BUFF_SIZE)
@@ -370,22 +372,36 @@ void splashDown()
   Serial.print("In  priority_queue: ");
   Serial.println(priority_queue.count());
   */
+
+  #if USE_GPS_LOGGING
+    if(GPS.LOCUS_ReadStatus())
+    {
+      int curr = (int)GPS.LOCUS_records;
+      Serial.print(curr); Serial.println(" Records");
+    }
+  #endif
 }
 
 ///run if packet is not sent on a try
 bool ISBDCallback() {
-    //reports that we have entered call back
+    //handles call back flag
     if(!inCallBack)
     {
       //Serial.println("Call Back");
       inCallBack = true;
     }
+
+    
     if(!splash_down && !GPS_Mode) //if we haven't splashed down or we arent in GPS Mode
     {
           do_tasks(); //make sure we are still reading in measurements and building packets
     }
+    else if(!GPS_Mode)//post splash down tasks
+    {
+      poll_GPS(); //if we are done reading sensors (i.e. splashed down) read in GPS data
+    }
     
-    checkSerialIn();
+    checkSerialIn(); //check for serial commands
     checkPowerOffSignal();
     
     return true;
@@ -411,7 +427,7 @@ void setup() {
     printMessageln("Initializing Sensors");
     
     //sensors
-    initSensors();
+    init_Sensors();
     init_TC();
 
     //DEPRECATED interupts
@@ -428,10 +444,6 @@ void setup() {
       isbd.adjustSendReceiveTimeout(45);
       isbd.useMSSTMWorkaround(false);
       isbd.setPowerProfile(0);
-    
-    //init packet timers
-    timeSinceR = 0;
-    timeSinceP = 0;
 
     printMessage("Turning on Modem");
     int err;
@@ -451,6 +463,8 @@ void setup() {
     printMessageln(" s");
     #endif
 
+    init_GPS(); //start the GPS
+
     //check the input voltage and turn of GPS mode if 3.3v
     if(powerMode > 3000 && powerMode < 3250)
     {
@@ -458,18 +472,42 @@ void setup() {
     }
 
     printMessageln("boot up complete");
+    //init packet timers
+    timeSinceR = 0;
+    timeSinceP = 0;
 }
 
 void loop() {
-    //after ejection before splash_down routine
-    //digitalWrite(13, HIGH);
-    if(!splash_down)
+    if(!splash_down) //pre splashdown tasks
     {
       do_tasks(); //complete needed tasks for measurment
     }
-    
-    
-    if(!message_queue.isEmpty()) //if there are messages to send, send em
+    else //post splash down tasks
+    {
+      poll_GPS(); //if we are done reading sensors (i.e. splashed down) read in GPS data
+    }
+
+
+    /*
+     * communication control
+     */
+    //if we have a valid GPS pos that hasnt been sent trasmit it
+    //always has priority after splashdown
+    if(splash_down && haveValidPos() && !haveTransmitted())
+    {
+      #if USE_MODEM
+        int response = isbd.sendSBDText(currGPSPos().c_str());
+      #else
+        int response = 0;
+        Serial.println("Current Pos");
+        Serial.println(currGPSPos());
+      #endif
+      if(response == 0)
+      {
+        GPS_transmissionComplete(); //if transmission was succesful set flag
+      }
+    }
+    else if(!message_queue.isEmpty()) //if there are messages to send, send em
     {
         startSendingMessage(); //send a message from the queue
         inCallBack = false;
@@ -478,6 +516,8 @@ void loop() {
     checkSerialIn();
     checkPowerOffSignal();  
 
+    //No longer need the capsule to turn off, if it is sending data we can find it, if not who cares
+    /*
     //If we have gone for long enough turn off the teensy
     if(splash_down && millis() >= (TIME_TO_SPLASH_DOWN + 60*1000) && message_queue.isEmpty())
     {
@@ -486,4 +526,5 @@ void loop() {
       #endif
       digitalWrite(PWR_PIN, LOW);
     }
+    */
 }
