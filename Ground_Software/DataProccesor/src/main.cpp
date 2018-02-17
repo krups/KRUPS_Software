@@ -74,7 +74,8 @@ int getMeasureSize(string measurementOrder)
                 break;  
             default:
                 printColorLn("fail", RED);
-                printColorLn("not a known instrument, check the .desc file given", RED);
+                cout << measurementOrder << endl << i << endl;
+                printColorLn(" is not a known instrument, check the .desc file given", RED);
                 return -1;
                 break;
         }
@@ -313,7 +314,8 @@ int main(int argc, char** argv)
 
         if(dataOut % measurementSize != 0)
         {
-            printColorLn("not mod measure size", RED);
+            printColor("not mod measure size of: ", RED);
+            cout << measurementSize << endl;
             //return -1;
         }
 

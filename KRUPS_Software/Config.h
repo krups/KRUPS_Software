@@ -30,7 +30,7 @@
  */
 #define MINS_TO_SPLASH_DOWN (3) //time until splashdown in mins
 #define TIME_TO_SPLASH_DOWN (MINS_TO_SPLASH_DOWN*60*1000) //Time until splash down routine begins in ms
-#define MEASURE_READ (33) //size of all the bytes coming in form the sensors
+#define MEASURE_READ (51) //size of all the bytes coming in form the sensors
 #define GPS_MODE_FREQ (10) //number of seconds to delay betweeen messages in GPS mode for testing at base
 
 /*

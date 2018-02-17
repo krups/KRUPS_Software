@@ -1,8 +1,8 @@
 #include <Arduino.h>
 #include <IridiumSBD.h>
-#include <QueueList.h>
 #include <elapsedMillis.h>
 #include <brieflzCompress.h>
+#include <PriorityQueue.h>
 
 #include "Packet.h"
 #include "Config.h"
@@ -59,10 +59,10 @@ int16_t measure_reads = 0; //tells which cycle read we are on (0-3) to determine
 #endif
 
 /*
- * Message Queues 
+ * Message Queue
  */
-QueueList<Packet> message_queue; //queue of messages left to send, messages pushed into front, pulled out back
-QueueList<Packet> priority_queue; //queue of messages to send with higher priority
+//priority queue to hold all generated packets, sorts using packetPriorityCalc (defined in Control.h)
+PriorityQueue<Packet> message_queue = PriorityQueue<Packet>(packetPriorityCalc);
 
 bool inCallBack = false; //used for debug out put
 
@@ -98,12 +98,12 @@ bool inCallBack = false; //used for debug out put
  }
 
 /*
- * Protocol to send a message, with error handling
+ * Protocol to send a message from the top the priority queue, with error handling
  */
-void startSendingMessage(QueueList<Packet>& queue)
+void startSendingMessage()
 {
   //grab a packet
-  Packet packet = queue.peek();
+  Packet packet = message_queue.peek();
   uint16_t loc  = packet.getLength();
   packStats(packet);
   //attempt to send
@@ -116,7 +116,7 @@ void startSendingMessage(QueueList<Packet>& queue)
   //if it returns 0 message is sent
   if(response == 0)
   {
-    queue.pop(); //remove message from the list
+    message_queue.pop(); //remove message from the list
     #if OUTPUT_PACKETS
       printPacket(packet);
     #endif
@@ -135,9 +135,9 @@ void startSendingMessage(QueueList<Packet>& queue)
 /*
  * Method to handle reading in data from onboard sensors into buff at loc
  * Checking to see how compressed the data is, and if its over the limit pushing
- * a packet into the given queue
+ * a packet into the message queue
  */
-void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
+void readInData(uint8_t* buff, size_t& loc)
 {
     unsigned long compressLen = 0;
     size_t priorloc;
@@ -195,8 +195,8 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
         compressLen = blz_pack(buff, compressedData, priorloc - MEASURE_READ, workspace); //compress the data
         
         double efficency = 100 - 100 * double(compressLen)/(priorloc - MEASURE_READ);  // measure the efficency of the compression
-        Packet p = Packet(priorloc - MEASURE_READ, compressedData, compressLen); //pack the packet
-        queue.push(p); //push into the current queue
+        Packet p = Packet(priorloc - MEASURE_READ, compressedData, compressLen, &loc == &ploc); //pack the packet, set priority bit if it is a priority packet
+        message_queue.push(p); //push into the current queue
 
         //copy the data that wasn't packed into the packet
         for(unsigned int j = 0; j < loc - (priorloc - MEASURE_READ); j++)
@@ -207,7 +207,7 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
 
         //stat tracking
         //if priority queue
-        if(&queue == &priority_queue)
+        if(&loc == &ploc)
         {
           avgTimeSinceP += timeSinceP/1000;
           avgCompressP += efficency;
@@ -235,11 +235,8 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
         printMessageln(p.getLength());
         printMessage("Total Packets: ");
         printMessageln(numPriority + numRegular);
-        printMessage("In  priority_queue: ");
-        printMessageln(priority_queue.count());
         printMessage("In queue: ");
         printMessageln(message_queue.count());
-        printMessageln("Copying data to front");
         printMessage("Time since last packet: ");
         printMessageln(timeSinceP);
         printMessageln(timeSinceR);
@@ -254,6 +251,8 @@ void readInData(uint8_t* buff, size_t& loc, QueueList<Packet>& queue )
    bytesMade += MEASURE_READ; //track the data generated
 }
 
+void splashDown();
+
 /*
  * Tasks to be completed at each measurement cycle
  */
@@ -262,13 +261,13 @@ void do_tasks()
   //pull data into the priority buff
   if(measure_reads == 0)
   { 
-    readInData(priority_buf, ploc, priority_queue);
+    readInData(priority_buf, ploc);
     //Serial.println(ploc);
   }
   //put data into the regular buff
   else
   {
-    readInData(regular_buf, rloc, message_queue);
+    readInData(regular_buf, rloc);
     //Serial.println(rloc);
   }
   
@@ -315,8 +314,8 @@ void splashDown()
     if(compressLen <= PACKET_MAX)
     {
       inOnePacket = true;
-      Packet p = Packet(ploc+rloc, compressedData, compressLen);
-      priority_queue.push(p);
+      Packet p = Packet(ploc+rloc, compressedData, compressLen, true);
+      message_queue.push(p);
       numPriority++;
       double efficency = 100 - 100* double(compressLen)/(ploc+rloc);
       avgCompressP += efficency;
@@ -338,8 +337,8 @@ void splashDown()
     
     //priority packet
     compressLen = blz_pack(priority_buf, compressedData, ploc, workspace);
-    Packet p = Packet(ploc, compressedData, compressLen);
-    priority_queue.push(p);
+    Packet p = Packet(ploc, compressedData, compressLen, true);
+    message_queue.push(p);
     numPriority++;
     double efficency = 100 - 100* double(compressLen)/(ploc);
     avgCompressP += efficency;
@@ -353,7 +352,7 @@ void splashDown()
 
     //regular packet
     compressLen = blz_pack(regular_buf, compressedData, rloc, workspace);
-    p = Packet(rloc, compressedData, compressLen);
+    p = Packet(rloc, compressedData, compressLen, false);
     message_queue.push(p);
     numRegular++;
     efficency = 100 - 100* double(compressLen)/(rloc);
@@ -445,7 +444,6 @@ void setup() {
       isbd.adjustSendReceiveTimeout(45);
       isbd.useMSSTMWorkaround(false);
       isbd.setPowerProfile(0);
-    
 
     printMessage("Turning on Modem");
     int err;
@@ -473,6 +471,7 @@ void setup() {
       GPS_Test_Mode();
     }
 
+    printMessageln("boot up complete");
     //init packet timers
     timeSinceR = 0;
     timeSinceP = 0;
@@ -508,26 +507,24 @@ void loop() {
         GPS_transmissionComplete(); //if transmission was succesful set flag
       }
     }
-    else if(!priority_queue.isEmpty()) //if there is priority data to send, do so
+    else if(!message_queue.isEmpty()) //if there are messages to send, send em
     {
-      startSendingMessage(priority_queue); //send a message from the priority list
-      inCallBack = false; //reset callback flag after leaving message sending protocol
-    }
-    else if(!message_queue.isEmpty()) //if no priority data, check regular data
-    {
-      startSendingMessage(message_queue); //send a message from the non priority list
-      inCallBack = false;
+        startSendingMessage(); //send a message from the queue
+        inCallBack = false;
     }
 
     checkSerialIn();
     checkPowerOffSignal();  
 
     //No longer need the capsule to turn off, if it is sending data we can find it, if not who cares
-    //If we have gone for long enough turn off the teensy
     /*
-    if(splash_down && millis() >= (TIME_TO_SPLASH_DOWN + 60*1000) && message_queue.isEmpty() && priority_queue.isEmpty())
+    //If we have gone for long enough turn off the teensy
+    if(splash_down && millis() >= (TIME_TO_SPLASH_DOWN + 60*1000) && message_queue.isEmpty())
     {
-      isbd.sendSBDText("Tweezers");
+      #if USE_MODEM
+        isbd.sendSBDText("Tweezers");
+      #endif
       digitalWrite(PWR_PIN, LOW);
     }
+    */
 }
