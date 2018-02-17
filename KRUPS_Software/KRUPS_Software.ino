@@ -250,6 +250,8 @@ void readInData(uint8_t* buff, size_t& loc)
    bytesMade += MEASURE_READ; //track the data generated
 }
 
+void splashDown();
+
 /*
  * Tasks to be completed at each measurement cycle
  */
@@ -454,6 +456,8 @@ void setup() {
     {
       GPS_Test_Mode();
     }
+
+    printMessageln("boot up complete");
 }
 
 void loop() {
@@ -463,10 +467,12 @@ void loop() {
     {
       do_tasks(); //complete needed tasks for measurment
     }
-    else if(!message_queue.isEmpty()) //if there are messages to send, send em
+    
+    
+    if(!message_queue.isEmpty()) //if there are messages to send, send em
     {
-      startSendingMessage(); //send a message from the queue
-      inCallBack = false;
+        startSendingMessage(); //send a message from the queue
+        inCallBack = false;
     }
 
     checkSerialIn();

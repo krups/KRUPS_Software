@@ -33,8 +33,8 @@ bool packetPriorityCalc(Packet a, Packet b)
   {
     //check time stamps and check if already packed for transmission
     //grab time stamps from a and b
-    int timeA = (a[2] << 8) + a[3];
-    int timeB = (b[2] << 8) + b[3];
+    int timeA = a.getPackTime();
+    int timeB = b.getPackTime();
     return timeA <= timeB; //priority goes to which ever was made first
   }
 }
@@ -84,13 +84,13 @@ void printMessageln()
  */
 void printPacket(Packet packet)
 {
+  Serial.println(packet.getLength());
   for(uint16_t i = 0; i < packet.getLength(); i++)
   {
-    printMessage(packet[i]);
-    printMessage(" ");
+    Serial.print(packet[i]);
+    Serial.print(" ");
   }
-  printMessageln();
-  printMessageln();
+  Serial.println();
 }
 
 /*
@@ -191,6 +191,7 @@ void checkSerialIn()
     }
     else if(command == "STATUS")
     {
+      Serial.println("ON");
       if(GPS_Mode)
       {
         printMessageln("GPS Mode");
