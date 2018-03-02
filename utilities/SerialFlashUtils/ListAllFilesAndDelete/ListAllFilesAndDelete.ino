@@ -56,7 +56,7 @@ void setup() {
       break; // no more files
     }
   }
-
+  Serial.println("Done");
 }
 
 void loop() {
