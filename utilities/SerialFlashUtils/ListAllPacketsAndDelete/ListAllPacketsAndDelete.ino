@@ -53,6 +53,7 @@ void setup() {
   pinMode(23, OUTPUT);
   digitalWrite(23, HIGH);
   Serial.begin(9600);
+  while(!Serial);
   Serial.println("Starting");
   bool active = SerialFlash.begin(14);
   Serial.print("Flash chip: ");

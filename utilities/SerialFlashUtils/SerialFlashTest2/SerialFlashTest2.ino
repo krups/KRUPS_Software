@@ -14,6 +14,7 @@ void setup() {
   numPriority = 0;
   numRegular = 0;
   Serial.begin(9600);
+  while(!Serial);
   Serial.println("Starting");
   init_flash();
   //readAllPackets();
