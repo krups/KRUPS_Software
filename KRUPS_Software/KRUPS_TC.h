@@ -1,5 +1,5 @@
 /*
- * Library of wrapper functions for reading the thermalcouples 
+ * Library of wrapper functions for reading the thermalcouples
  * on the KRUPS Breakout board
  */
 
@@ -10,27 +10,26 @@
 #include <SPI.h>
 
 #define HARDWARE_SPI (true) //determines if software or hardware SPI is used to read the TC's
+#define DEBUG		(false)
 
-
-#define PINEN		(5)
 #define PINMUX0		(2)
 #define PINMUX1		(3)
-#define PINCS1		(9)
-#define PINCS2		(7)
-#define PINCS3		(8)
+#define PINCS1		(20)
+#define PINCS2		(6)
+#define PINCS3		(5)
+#define PINCS4		(4)
 #define PINSO		(12)
 #define CLK			(13)
 
 // initializes the Thermocouple converter and the associated multiplexors
 void init_TC(void) {
-	pinMode(PINEN, OUTPUT);
 	pinMode(PINMUX0, OUTPUT);
 	pinMode(PINMUX1, OUTPUT);
 	pinMode(PINCS1, OUTPUT);
 	pinMode(PINCS2, OUTPUT);
 	pinMode(PINCS3, OUTPUT);
+	pinMode(PINCS4, OUTPUT);
 
-	digitalWrite(PINEN, HIGH);   		// enable on
 	digitalWrite(PINMUX0, LOW);     	// low, low = channel 1
 	digitalWrite(PINMUX1, LOW);
 	SPI.begin();
@@ -106,6 +105,9 @@ int16_t spiread32(int PINCS) {
         //else Serial.print("0");
         digitalWriteFast(CLK, HIGH);
     }
+		if DEBUG
+			Serial.println(d, BIN);
+
     if (d & 0x10000) {
         if ( d & 0x0004 ) d = -999999;
         else if ( d & 0x0002 ) d = -99999;
@@ -146,18 +148,23 @@ void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
 	int16_t one = spiread32(PINCS1);
 	int16_t two = spiread32(PINCS2);
 	int16_t three = spiread32(PINCS3);
+	int16_t four = spiread32(PINCS4);
 
   #if DEBUG
 	Serial.print(float(one) *.25);
 	Serial.print("\t");
-	Serial.print (float(two)* .25);
+	Serial.print(float(two)* .25);
 	Serial.print("\t");
-	Serial.println(float(three) * .25);
+	Serial.print(float(three) * .25);
+	Serial.print("\t");
+	Serial.println(float(four) * .25);
+
   #endif
 
 	append(buf, loc, one);
 	append(buf, loc, two);
 	append(buf, loc, three);
+	append(buf, loc, four);
 }
 
 #endif
