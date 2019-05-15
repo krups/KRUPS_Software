@@ -1,27 +1,22 @@
-/*
- * Library of wrapper functions for reading the thermalcouples
- * on the KRUPS Breakout board
- */
-
 #ifndef KRUPS_TC_H
 #define KRUPS_TC_H
+
 #include "Control.h"
 #include "Config.h"
 #include <SPI.h>
 
-#define HARDWARE_SPI (true) //determines if software or hardware SPI is used to read the TC's
-#define DEBUG		(false)
+#define HARDWARE_SPI 	(true)
+#define DEBUG			(false)
 
-#define PINMUX0		(2)
-#define PINMUX1		(3)
+#define PINMUX0		(16)
+#define PINMUX1		(17)
 #define PINCS1		(20)
-#define PINCS2		(6)
-#define PINCS3		(5)
-#define PINCS4		(4)
+#define PINCS2		(21)
+#define PINCS3		(9)
+#define PINCS4		(10)
 #define PINSO		(12)
 #define CLK			(13)
 
-// initializes the Thermocouple converter and the associated multiplexors
 void init_TC(void) {
 	pinMode(PINMUX0, OUTPUT);
 	pinMode(PINMUX1, OUTPUT);

@@ -1,12 +1,3 @@
-/*
- * Basic control flow functions for main code
- * Functions in this header complete a simple task that happens 
- * repeatedley throughout the code base
- * 
- * Author: Collin Dietz
- * Email: c4dietz@gmail.com
- */
-
 #ifndef CONTROL_H
 #define CONTROL_H
 
@@ -14,6 +5,29 @@
 #include "Packet.h"
 #include "Config.h"
 
+/*
+	Functions and time delay for activating parachute Solenoids
+
+*/
+extern volatile bool chuteDeployed;
+
+const int time_out = 75; 
+
+void sealChuteLid()
+{
+ analogWrite(PARACHUTE_PIN, 128);
+ delay(time_out);
+ analogWrite(PARACHUTE_PIN, 0);
+ chuteDeployed = false;
+}
+
+void deployChute()
+{
+ analogWrite(PARACHUTE_PIN, 250);
+ delay(time_out);
+ analogWrite(PARACHUTE_PIN, 0);
+ chuteDeployed = true;
+}
 /*
  * Decides sorting of packets in the priority queue
  * Method: Checks the priority flag of the packet 
@@ -98,12 +112,12 @@ void printPacket(Packet packet)
  */
 void checkPowerOffSignal()
 {
-  if(analogRead(PWR_PIN) == 4095 && millis() > 20 * 1000)
-  {
-    while(analogRead(PWR_PIN) == 4095);
-    //digitalWrite(13, LOW);
-    digitalWrite(PWR_PIN, LOW);
-  }
+	if(analogRead(PWR_PIN) == 4095 && millis() > 20 * 1000)
+    {
+		while(analogRead(PWR_PIN) == 4095);
+		//digitalWrite(13, LOW);
+		digitalWrite(PWR_PIN, LOW);
+	}
 }
 
 
@@ -128,10 +142,11 @@ void blinkLed(int numTimes, int pauseTime)
 extern uint8_t numRegular, numPriority, sendAttemptErrors;
 extern uint16_t bytesMade;
 extern double avgCompressR, avgCompressP, avgTimeSinceR, avgTimeSinceP;
-extern volatile bool GPS_Mode, splash_down;
+extern volatile bool GPS_Mode, splash_down, chuteDeployed;
 extern PriorityQueue<Packet> message_queue;
 extern size_t rloc, ploc;
 extern elapsedMillis timeSinceR, timeSinceP;
+extern IridiumSBD isbd;
 
 /*
  * Fills a packet from loc 2 to 12 with stats from current program run
@@ -184,12 +199,12 @@ void checkSerialIn()
   if(Serial.available())
   {
     String command = Serial.readString();
-    if(command == "OFF")
+    if(command == "OFF\n")
     {
       blinkLed(2, 1000);
       digitalWrite(PWR_PIN, LOW);
     }
-    else if(command == "STATUS")
+    else if(command == "STATUS\n")
     {
       Serial.println("ON");
       if(GPS_Mode)
@@ -222,8 +237,55 @@ void checkSerialIn()
         {
           printMessageln("Splash Down has not occured");
         }
-       }
+
+        if(chuteDeployed)
+        {
+         printMessageln("Chute deploy has occured");
+        }
+        else
+        {
+         printMessageln("Chute deploy has not occured");
+        }
+        
+       } 
      }
+	 else if(command == "DEPLOY\n")
+	 {
+		Serial.println("DEPLOY");
+    deployChute();
+	 }
+	 else if(command == "SEAL\n")
+	 {
+    Serial.println("SEALING LID");
+    sealChuteLid();
+	 }
+   else if(command == "TIME\n")
+   {
+    Serial.print("Time:");
+    Serial.println(millis());
+    Serial.print("Time till chute deploy:");
+    Serial.println((TIME_TO_DEPLOY - millis())/1000);
+    Serial.print("Time till splash:");
+    Serial.println((TIME_TO_SPLASH_DOWN - millis())/1000);
+   }
+   else if(command == "CSQ\n")
+   {
+    int signalQuality;
+    isbd.getSignalQuality(signalQuality);
+    Serial.println();
+    Serial.println();
+    Serial.println();
+    Serial.println();
+
+    Serial.print("On a scale of 0 to 5, signal quality is currently ");
+    Serial.print(signalQuality);
+    Serial.println(".");
+
+    Serial.println();
+    Serial.println();
+    Serial.println();
+    Serial.println();
+   }
    }
 }
 
