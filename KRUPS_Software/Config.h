@@ -29,7 +29,7 @@
 /*
  * Flight control data
  */
- #define TIME_TO_DEPLOY (450950) //Time until parachute deploy routine begins in ms
+ #define TIME_TO_DEPLOY (590900) //Time until parachute deploy routine begins in ms
 #define TIME_TO_SPLASH_DOWN (TIME_TO_DEPLOY + 569700) //Time until splash down routine begins in ms
 
 
@@ -66,6 +66,6 @@
 #define GPS_WIPE_ON_START (true) //controls if the GPS should wipe all previous logging on power on
 #define USE_GPS_LOGGING (true) //controls if the GPS should turn on logging on initiation
 #define GPS_START_TIME_MAX (1*60*1000) //time in ms to wait for logging to start
-#define PHONE_TO_TEXT ("8593942228")
+#define PHONE_TO_TEXT ("6065341006") //Phone number of person to receive GPS texts
 
 #endif
