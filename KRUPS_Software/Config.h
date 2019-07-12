@@ -4,6 +4,9 @@
  * 
  * Author: Collin Dietz
  * Email: c4dietz@gmail.com
+ *
+ * Co-Author: Josh Loredo
+ * Email: josh.loredo@live.com
  */
 
 #ifndef CONFIG_H
