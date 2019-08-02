@@ -112,7 +112,7 @@ void startSendingMessage()
   Serial.println(loc);
   //attempt to send
 #if USE_MODEM
-  int response =  isbd.sendSBDBinary(packet.getArrayBase(), loc-13);
+  int response =  isbd.sendSBDBinary(packet.getArrayBase(), loc);
 #else
   int response = 0;
 #endif
