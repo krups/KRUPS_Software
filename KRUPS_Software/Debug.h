@@ -1,27 +1,16 @@
-/*
- * Header to redefine critical funcitons to provide dummy data
- * to allow debugging and testing on the main software
- * 
- * Author: Collin Dietz
- * Email: c4dietz@gmail.com
- * Date: 5/11/17
- */
-
-//TODO: Implement modular debugging output
-
 
 #ifndef DEBUG_H
 #define DEBUG_H
 
 //Pinout definitions for sensors
-#define PINEN   (5)
-#define PINMUX0   (2)
-#define PINMUX1   (3)
-#define PINCS1    (9)
-#define PINCS2    (7)
-#define PINCS3    (8)
-#define PINSO   (12)
-#define CLK     (13)
+#define PINMUX0		(16)
+#define PINMUX1		(17)
+#define PINCS1		(20)
+#define PINCS2		(21)
+#define PINCS3		(9)
+#define PINCS4		(10)
+#define PINSO		(12)
+#define CLK			(13)
 
 #include"Packet.h"
 #include"Control.h"
@@ -79,20 +68,22 @@ void Read_TC_at_MUX(uint8_t *buf, size_t &loc)
   append(buf, loc, 20 + 3*mux + 0);
   append(buf, loc, 20 + 3*mux + 1);
   append(buf, loc, 20 + 3*mux + 2);
+  append(buf, loc, 20 + 3*mux + 3);
 }
 
 //empty funtions to allow compilation, do not effect testing
 //and do not need to execute
 void init_Sensors() {}
 void init_TC() {
-   pinMode(PINEN, OUTPUT);
+
+
   pinMode(PINMUX0, OUTPUT);
   pinMode(PINMUX1, OUTPUT);
   pinMode(PINCS1, OUTPUT);
   pinMode(PINCS2, OUTPUT);
   pinMode(PINCS3, OUTPUT);
-
-  digitalWrite(PINEN, HIGH);      // enable on
+  pinMode(PINCS4, OUTPUT);
+  
   digitalWrite(PINMUX0, LOW);       // low, low = channel 1
   digitalWrite(PINMUX1, LOW);
   //SPI.begin();
@@ -138,4 +129,4 @@ void save_time(uint8_t* buff, size_t& loc)
 }
 
 
-#endif
+#endif	

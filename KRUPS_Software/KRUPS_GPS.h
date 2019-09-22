@@ -1,151 +1,111 @@
 /*
  * Author: Collin Dietz
- * Date: 12/21/17
- * Control funtions for an Adafruit ultimate GPS module
- */
- 
-#include<Adafruit_GPS.h>
-#include <elapsedMillis.h>
-#include"Config.h"
-#include"Control.h"
-
-#define GPS_Serial (Serial2) //Hardware serial connection for the module
-#define GPS_Enable (8) //GPS enable pin
-
-Adafruit_GPS GPS(&GPS_Serial); //global GPS object
-
-
-/*
- * Struct to hold the most recent correct GPS data
- */
-struct GPS_Data
-{
-  uint8_t hour, minute, seconds, year, month, day;
-  uint16_t milliseconds;
-  // Floating point latitude and longitude value in degrees.
-  float latitude, longitude;
-  // Fixed point latitude and longitude value with degrees stored in units of 1/100000 degrees,
-  // and minutes stored in units of 1/100000 degrees.  See pull #13 for more details:
-  //   https://github.com/adafruit/Adafruit-GPS-Library/pull/13
-  int32_t latitude_fixed, longitude_fixed;
-  float latitudeDegrees, longitudeDegrees;
-  float geoidheight, altitude;
-  float speed, angle, magvariation, HDOP;
-  char lat, lon, mag;
-  uint8_t fixquality, satellites;
-  boolean transmitted;
-};
-
-GPS_Data lastValid;
-
-/*
- * Control functions for lastValid GPS_Data
+ * Date: 5/7/19
+ * Control funtions for Fona GPS module
  */
 
-//checks if the struct has a valid GPS posisiton saved in it
-boolean haveValidPos()
-{
-  return lastValid.fixquality != 0;
-}
+#ifndef KRUPS_GPS_H
+#define KRUPS_GPS_H
 
-//sets transmitted flag to true in valid to make sure it isnt double sent
-void GPS_transmissionComplete()
-{
-  lastValid.transmitted = true;
-}
+#include <Adafruit_FONA.h>
 
-// checks if current gps data has been transmitted yet
-boolean haveTransmitted()
-{
-  return lastValid.transmitted;
-}
+//GPS Initialization 
+#define FONA_RST 11
 
+// Buffer for GPS replies
+char replybuffer[255];
 
-/*
- * Initilizes the GPS module, sets data output, freq
- * begins logging, and wipes the onboard flash memory
- * GPS_WIPE_ON_START - sets if flash should be wipped before turinng on loggig
- * USE_GPS_LOGGING - deterimines if logging should be used
- * GPS_START_TIME_MAX - max time to wait for GPS logging to begin
- */
-void init_GPS()
+//GPS is on Serial3
+HardwareSerial *fonaSerial = &Serial3;
+Adafruit_FONA_3G fona = Adafruit_FONA_3G(FONA_RST);
+
+uint8_t readline(char *buff, uint8_t maxbuff, uint16_t timeout = 0);
+
+bool GPS_Setup()
 {
-  pinMode(GPS_Enable, OUTPUT);
-  digitalWrite(GPS_Enable, HIGH); //hold gps enable up
-  GPS.begin(9600); //start gps and default baud
+  bool GPSFail;
+  //starting baud rate, later set to 4800 per FONA requirements
+  Serial.println("Turing on GPS");
+  fonaSerial->begin(4800);
   
-  //if we desire wipe the flash on power on
-  #if(GPS_WIPE_ON_START)
-      GPS.sendCommand(PMTK_LOCUS_ERASE_FLASH);
-      printMessageln("GPS log erased");
-  #endif
-  
-  //set output for RMC+GGA data (what the parser cares about)
-  GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); 
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);  //set update rate to 1 Hz (suggested)
-
-  #if(USE_GPS_LOGGING)
-  //start up logging, try as long as GPS_START_TIME_MAX
-  elapsedMillis gpsTimeout = 0;
-
-  printMessageln("Starting GPS logging");
-  while (gpsTimeout < GPS_START_TIME_MAX)
+  //Connect to FONA
+  if (!fona.begin(*fonaSerial)) 
   {
-    if(GPS.LOCUS_StartLogger())
+    Serial.println("Couldn't connect to GPs");
+    GPSFail = true;
+  }
+  else
+  {
+    Serial.println("Connected to GPS");
+    // Print module IMEI number.
+    char imei[16] = {0}; // MUST use a 16 character buffer for IMEI!
+    uint8_t imeiLen = fona.getIMEI(imei);
+    if (imeiLen > 0) 
     {
-      //if succesful break the loop
-      printMessageln("Logging Started");
+      Serial.print("Module IMEI: "); Serial.println(imei);
+    }
+    GPSFail = false;
+  }
+  return GPSFail;
+}
+
+void SendGPS(char* gpsdata)
+{
+  // read the network/cellular status
+  uint8_t n = fona.getNetworkStatus();
+  Serial.print("Network status ");
+  Serial.print(n);
+  Serial.print(": ");
+  switch(n)
+  {
+    case 0:
+      Serial.println("Not registered");
       break;
-    }
+    case 1:
+      Serial.println("Registered (home)");
+      break;
+    case 2:
+      Serial.println("Not registered (searching)");
+      break;
+    case 3:
+      Serial.println("Denied");
+      break;
+    case 4:
+      Serial.println("Unknown");
+      break;
+    case 5:
+      Serial.println("Registered roaming");
+      break;
+    default:
+      Serial.println("Unkown Case");
   }
-  #endif
-
-  lastValid.fixquality = 0; //functions as flag that a valid pos is found, have to initilize
-}
-
-/*
- * pulls in data from the GPS, if data is GPS valid is parsed
- * if GPS has a fix stores the most recent pos in lastValid
- */
-void poll_GPS()
-{
-  char c = GPS.read(); //keep pulling in data
-  if(GPS.newNMEAreceived()) //if a full sentence is through
+        
+  Serial.println(F("Activating GPS"));
+  // turn GPS on
+  if (!fona.enableGPS(true))
+  Serial.println("Failed to turn on");
+   
+  Serial.println("Query GPS location");
+  // check for GPS location
+  fona.getGPS(0, gpsdata, 120);
+  Serial.println("Reply in format: mode,fixstatus,utctime(yyyymmddHHMMSS),latitude,longitude,altitude,speed,course,fixmode,reserved1,HDOP,PDOP,VDOP,reserved2,view_satellites,used_satellites,reserved3,C/N0max,HPA,VPA");
+  Serial.println(gpsdata);
+      
+  Serial.println("Send SMS with location");
+  // send an SMS!
+  char sendto[11]= PHONE_TO_TEXT;
+  Serial.print("Send to #");
+  Serial.println(sendto);
+  Serial.print("Sending location....");
+  Serial.println(gpsdata);
+  if (!fona.sendSMS(sendto, gpsdata))
   {
-    if(!GPS.parse(GPS.lastNMEA()))
-    {
-      return; //parsing failed, keep pulling in data
-    }
-
-    //if good data save as most recent pos
-    if(GPS.fix)
-    {
-      //printMessageln("GPS pos updated");
-      lastValid.hour = GPS.hour; lastValid.minute = GPS.minute; lastValid.seconds = GPS.seconds;
-      lastValid.milliseconds = GPS.milliseconds;
-      lastValid.latitude = GPS.latitude; lastValid.longitude = GPS.longitude;
-      lastValid.latitude_fixed = GPS.latitude_fixed; lastValid.longitude_fixed = GPS.longitude_fixed;
-      lastValid.latitudeDegrees = GPS.latitudeDegrees; lastValid.longitudeDegrees = GPS.longitudeDegrees;
-      lastValid.geoidheight = GPS.geoidheight; lastValid.altitude = GPS.altitude;
-      lastValid.speed = GPS.speed; lastValid.angle = GPS.angle; 
-      lastValid.magvariation = GPS.magvariation; lastValid.HDOP = GPS.HDOP;
-      lastValid.lat = GPS.lat; lastValid.lon = GPS.lon; lastValid.mag = GPS.mag;
-      lastValid.fixquality = GPS.fixquality; lastValid.satellites = GPS.satellites;
-      lastValid.transmitted = false;
-    }
+    Serial.println("Failed");
+  } 
+  else 
+  {
+    Serial.println("Sent!");
   }
 }
 
-/*
- * reports relevant gps pos data as a string off of lastValid. 
- * Check haveValidPos() to make sure that data is valid 
- */
-String currGPSPos()
-{
-  String pos = String(lastValid.hour) + ":" + String(lastValid.minute) + "." + String(lastValid.seconds) + '\n'; //add time info to string 
-  pos += String(lastValid.latitudeDegrees) + '\t' + String(lastValid.longitudeDegrees) + '\n'; //posistion info
-  pos += String(lastValid.speed) + "kn @" +  String(lastValid.angle) +'\n';
-  pos += String(lastValid.altitude) + "m " + String(lastValid.fixquality);
-  return pos;
-}
-
+#endif
