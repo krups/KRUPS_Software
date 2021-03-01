@@ -27,7 +27,8 @@ MPU9250 sense(Wire, 0x68);
 // initialize the sensors (mag, gyro, accel)
 void init_Sensors(void)
 {
-	Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, 400000);
+	//Wire.begin(I2C_MASTER, 0x00, I2C_PINS_18_19, I2C_PULLUP_INT, 400000);
+  Wire.begin();
     int status = sense.begin();
 	if(status < 0){
 		 Serial.println("IMU initialization unsuccessful");
@@ -47,21 +48,21 @@ void init_Sensors(void)
 // end of the input buffer and moves location pointer accordingly
 void Read_gyro(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
     sense.readSensor();
-    sense.ReadGyro(buf,loc);
+    //sense.ReadGyro(buf,loc);
 }
 
 // Reads all axis of the MPU9250 accel and appends the values to
 // end of the input buffer and moves location pointer accordingly
 void Read_loaccel(uint8_t*buf, size_t &loc) { // requires 6 bytes in buffer
     sense.readSensor();
-    sense.ReadAccel(buf,loc);
+    //sense.ReadAccel(buf,loc);
 }
 
 // Reads all axis of the MPU9250 magnetometer and appends the values to
 // end of the input buffer and moves location pointer accordingly
 void Read_mag(uint8_t *buf, size_t &loc) { // requires 6 bytes in buffer
     sense.readSensor();
-    sense.ReadMag(buf,loc);
+    //sense.ReadMag(buf,loc);
 }
 // Reads all axis of the ADXL377 accel and appends the values to
 // the end of the input buffer, and moves the location pointer accordingly
