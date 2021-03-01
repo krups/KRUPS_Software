@@ -49,7 +49,7 @@
 /*
  * Packet Data
  */
-#define PACKET_SIZE (512) //size of a packets to send
+#define PACKET_SIZE (340) //size of a packets to send
 #define HEADER_SIZE (13)  //number of bytes taken up in the packet by buffer
 #define PACKET_MAX (PACKET_SIZE - HEADER_SIZE)
 
