@@ -5,6 +5,7 @@
 #define COMPRESS_H
 
 #include <cstdint>
+#include <cstdio>
 
 using namespace std;
 
